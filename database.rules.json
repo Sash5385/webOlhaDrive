@@ -5,20 +5,20 @@
       ".write": "auth != null"
     },
     "admin": {
-      ".read": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'",
-      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'"
+      ".read": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'",
+      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'"
     },
     "admin_settings": {
       ".read": true,
-      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'"
+      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'"
     },
     "admin_data": {
-      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'",
+      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'",
       "services": {
         ".read": "auth != null"
       },
       "$other": {
-        ".read": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'"
+        ".read": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'"
       }
     },
     "timeslots": {
@@ -29,17 +29,17 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
       }
     },
     "queue": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'",
+      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'",
       "$slotKey": {
         "entries": {
           ".read": "auth != null",
           "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
           }
         }
       }
@@ -48,7 +48,7 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
       }
     },
     "chats": {
@@ -57,8 +57,8 @@
         ".write": "auth != null"
       },
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
       }
     },
     "chatMeta": {
@@ -67,14 +67,14 @@
         ".write": "auth != null"
       },
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
       }
     },
     "notifications": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
       }
     },
     "settings": {
