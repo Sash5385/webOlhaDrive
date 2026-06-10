@@ -1485,14 +1485,16 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         return (
                           <div style={{
                             position:"absolute", top:2, left:2, right:2, bottom:2,
-                            display:"flex", flexDirection:"column", justifyContent:"space-evenly",
+                            display:"flex", flexDirection:"column", justifyContent:"center",
+                            alignItems:"center", gap:1,
                             overflow:"hidden", zIndex:2,
                           }}>
                             {lines.map((ln, i) => (
                               <div key={i} style={{
                                 fontSize: fs, fontWeight: ln.w, color: ln.c,
                                 lineHeight: 1.2, textAlign:"center",
-                                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
+                                whiteSpace:"normal", wordBreak:"break-word", overflowWrap:"anywhere",
+                                width:"100%",
                                 textShadow:"0 1px 2px rgba(0,0,0,0.55)",
                               }}>{ln.text}</div>
                             ))}
