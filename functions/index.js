@@ -20,7 +20,7 @@ async function pushStudent(uid, title, body, data = {}) {
   const snap = await db.ref(`users/${uid}/fcmTokens/web/token`).get();
   const token = snap.val();
   if (!token) return;
-  const link = data.url || "https://olhadrive.pro/cabinet";
+  const link = data.url || "https://olhadrive.kiev.ua/cabinet";
   await admin.messaging().send({
     token,
     notification: { title, body },
@@ -58,7 +58,7 @@ async function pushAdmin(title, body) {
       notification: { title, body },
       webpush: {
         notification: { icon: "/favicon.svg" },
-        fcmOptions: { link: "https://admin.olhadrive.pro" },
+        fcmOptions: { link: "https://admin.olhadrive.kiev.ua" },
       },
     });
     console.log(`pushAdmin OK: ${title} messageId=${result}`);
@@ -145,7 +145,7 @@ exports.onBookingChanged = onValueWritten(
     if (after.status === "confirmed" && before.status !== "confirmed") {
       console.log(`onBookingChanged: admin confirmed uid=${uid}`);
       await pushStudent(uid, "✅ Урок підтверджено", `${date} о ${time}`, {
-        url: "https://olhadrive.pro/cabinet/bookings",
+        url: "https://olhadrive.kiev.ua/cabinet/bookings",
       });
       await saveNotification(uid, "✅ Урок підтверджено", `${date} о ${time}`, "booking_confirmed");
       return;
@@ -157,7 +157,7 @@ exports.onBookingChanged = onValueWritten(
       const slotUpd = buildSlotUpdates(before, true);
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
       await pushStudent(uid, "❌ Урок скасовано", `${date} о ${time}`, {
-        url: "https://olhadrive.pro/cabinet/bookings",
+        url: "https://olhadrive.kiev.ua/cabinet/bookings",
       });
       await saveNotification(uid, "❌ Урок скасовано", `${date} о ${time}`, "booking_cancelled");
       if (date !== "—" && time !== "—") await inviteNextInQueue(`${date}_${time}`).catch(() => {});
@@ -206,7 +206,7 @@ exports.onQueueInvite = onValueUpdated(
     // In-app сповіщення: клієнт підписаний на цей шлях
     await db.ref(`users/${uid}/queueOffers/${slotKey}`).set({ date, time, until, slotKey }).catch(() => {});
 
-    const url = `https://olhadrive.pro/cabinet?date=${date}&time=${encodeURIComponent(time)}`;
+    const url = `https://olhadrive.kiev.ua/cabinet?date=${date}&time=${encodeURIComponent(time)}`;
     const pushTitle = "🎉 Слот зарезервовано для вас!";
     const pushBody = `${date} о ${time} — у вас 30 хвилин щоб записатись`;
     await pushStudent(uid, pushTitle, pushBody, { url, date, time, slotKey });
@@ -330,7 +330,7 @@ exports.unlockVipSlots = onSchedule("every 1 hours", async () => {
       },
       webpush: {
         notification: { icon: "/favicon.svg" },
-        fcmOptions: { link: "https://olhadrive.pro/cabinet" },
+        fcmOptions: { link: "https://olhadrive.kiev.ua/cabinet" },
       },
     }).catch(() => {});
   }
@@ -378,7 +378,7 @@ exports.onSlotFreed = onValueWritten(
     const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
     const title = "🚗 Звільнився слот!";
     const body  = `${dateFormatted} о ${time} — є вільне місце`;
-    const url   = `https://olhadrive.pro/cabinet?date=${date}`;
+    const url   = `https://olhadrive.kiev.ua/cabinet?date=${date}`;
 
     for (const uid of notifyUids) {
       await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
@@ -405,7 +405,7 @@ exports.flushRescheduleQueue = onSchedule(
       });
     });
     await Promise.all(tasks.map(async ({ uid, bookingId, body }) => {
-      await pushStudent(uid, "🔄 Урок перенесено", body, { url: "https://olhadrive.pro/cabinet/bookings" });
+      await pushStudent(uid, "🔄 Урок перенесено", body, { url: "https://olhadrive.kiev.ua/cabinet/bookings" });
       await saveNotification(uid, "🔄 Урок перенесено", body, "booking_rescheduled");
       await db.ref(`rescheduleQueue/${uid}/${bookingId}`).remove();
       console.log(`flushRescheduleQueue: sent to uid=${uid} bookingId=${bookingId}`);
