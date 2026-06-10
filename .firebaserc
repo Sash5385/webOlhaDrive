@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "olhadrive-booking"
+  },
+  "targets": {
+    "olhadrive-booking": {
+      "hosting": {
+        "admin": [
+          "olhadrive-admin"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

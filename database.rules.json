@@ -1,0 +1,85 @@
+{
+  "rules": {
+    "admins": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    "admin": {
+      ".read": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'",
+      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'"
+    },
+    "admin_settings": {
+      ".read": true,
+      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'"
+    },
+    "admin_data": {
+      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'",
+      "services": {
+        ".read": "auth != null"
+      },
+      "$other": {
+        ".read": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'"
+      }
+    },
+    "timeslots": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "bookings": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+      }
+    },
+    "queue": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.uid === 'NEW_ADMIN_UID_HERE'",
+      "$slotKey": {
+        "entries": {
+          ".read": "auth != null",
+          "$uid": {
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+          }
+        }
+      }
+    },
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+      }
+    },
+    "chats": {
+      "general": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+      }
+    },
+    "chatMeta": {
+      "general": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      },
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+      }
+    },
+    "notifications": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'NEW_ADMIN_UID_HERE')"
+      }
+    },
+    "settings": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    }
+  }
+}
