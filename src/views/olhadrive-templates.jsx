@@ -4,7 +4,7 @@ import { db } from "../firebase";
 import { LangContext } from "../App";
 import { createT } from "../lang";
 
-import { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, TEAL, SO, SI } from "../theme.js";
+import { ThemeContext } from "../theme.js";
 
 // ─── CSS ────────────────────────────────────────────────────────
 const CSS = `

@@ -171,13 +171,15 @@ export default function SettingsView({ settings, setSettings }) {
   const { BG_DEEP, SURF_HI, SURFACE, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, TEAL, SO, SI } = useContext(ThemeContext);
   const lang = useContext(LangContext);
   const t = createT(lang);
+  const isKava = settings?.theme === "light";
+  const scrollThumb = isKava ? `rgba(92,42,26,0.2)` : `rgba(255,255,255,0.08)`;
   const css = `
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 ::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px}
+::-webkit-scrollbar-thumb{background:${scrollThumb};border-radius:2px}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:${BG_DEEP};outline:none;box-shadow:${SI}}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:9px;background:linear-gradient(145deg,${ACC_HI},${ACCENT});cursor:pointer;box-shadow:0 2px 6px rgba(255,90,60,0.5)}
-select{color-scheme:dark}
+select{color-scheme:${isKava?"light":"dark"}}
 .sec-body{display:grid;transition:grid-template-rows .22s ease}
 .sec-body>div{overflow:hidden}
 `;
@@ -322,8 +324,11 @@ select{color-scheme:dark}
         {/* ── ПІДТВЕРДЖЕННЯ & ЧЕРГА ── */}
         <Section title={t('set.queue.title')} icon="✅">
           <Info color={GREEN} title={t('set.queue.info_t')} text={t('set.queue.info')}/>
-          <Row label={t('set.queue.require')} hint={t('set.queue.require_h')} last>
+          <Row label={t('set.queue.require')} hint={t('set.queue.require_h')}>
             <Toggle on={settings.pendingEnabled} onChange={v=>upd("pendingEnabled",v)}/>
+          </Row>
+          <Row label={lang==="en"?"Show «Complete» button":"Кнопка «Завершити»"} hint={lang==="en"?"Show a Complete button on confirmed bookings":"Показувати кнопку «Завершити» на підтверджених записах"} last>
+            <Toggle on={settings.showCompleteBtn !== false} onChange={v=>upd("showCompleteBtn",v)}/>
           </Row>
           <div style={{paddingTop:10}}>
             <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>{t('set.queue.mode')}</div>

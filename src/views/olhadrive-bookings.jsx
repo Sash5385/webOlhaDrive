@@ -4,46 +4,33 @@ import { db } from "../firebase";
 import { LangContext } from "../App";
 import { createT, T } from "../lang";
 
-import { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, TEAL, SO, SI } from "../theme.js";
+import { ThemeContext } from "../theme.js";
 
 const PALETTE = [
-  { id:"green",   color:GREEN  },
-  { id:"yellow",  color:GOLD   },
-  { id:"blue",    color:BLUE   },
-  { id:"purple",  color:PURPLE },
-  { id:"red",     color:ACCENT },
-  { id:"teal",    color:TEAL   },
+  { id:"green",   color:"#7ed957" },
+  { id:"yellow",  color:"#f7c948" },
+  { id:"blue",    color:"#5b9bff" },
+  { id:"purple",  color:"#c084fc" },
+  { id:"red",     color:"#ff5a3c" },
+  { id:"teal",    color:"#2dd4bf" },
   { id:"pink",    color:"#f472b6" },
   { id:"orange",  color:"#fb923c" },
   { id:"indigo",  color:"#818cf8" },
   { id:"lime",    color:"#a3e635" },
 ];
-const colorOf = id => PALETTE.find(p=>p.id===id)?.color || GREEN;
+const colorOf = id => PALETTE.find(p=>p.id===id)?.color || "#7ed957";
 
-const CSS = `
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
-textarea{color-scheme:dark}
-.icon3d{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;position:relative;overflow:hidden;flex-shrink:0;box-shadow:-2px 4px 10px rgba(0,0,0,0.5),inset 1px 1px 0 rgba(255,255,255,0.25),inset -1px -1px 0 rgba(0,0,0,0.3)}
-.icon3d::before{content:'';position:absolute;top:0;right:0;width:60%;height:50%;background:radial-gradient(ellipse at top right,rgba(255,255,255,0.4) 0%,transparent 70%);pointer-events:none}
-.icon3d>svg{position:relative;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.4))}
-@keyframes expand-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.expand-body{animation:expand-in .18s ease both}
-@keyframes bk-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.bk-in{animation:bk-in .2s ease both}
-`;
 
 // ─── DATA ──────────────────────────────────────────────────────
 const SERVICES = {
-  sv1:{ name:"Автошкола 1г", color:GREEN, type:"school"  },
-  sv2:{ name:"Автошкола 2г", color:GREEN, type:"school"  },
-  sv3:{ name:"Приватний 1г", color:GOLD,  type:"private" },
-  sv4:{ name:"Приватний 2г", color:GOLD,  type:"private" },
+  sv1:{ name:"Автошкола 1г", color:"#7ed957", type:"school"  },
+  sv2:{ name:"Автошкола 2г", color:"#7ed957", type:"school"  },
+  sv3:{ name:"Приватний 1г", color:"#f7c948", type:"private" },
+  sv4:{ name:"Приватний 2г", color:"#f7c948", type:"private" },
 };
 const CATEGORIES = {
   "cat-vip":{ name:"VIP",      color:"#c084fc" },
-  "cat-std":{ name:"Стандарт", color:BLUE      },
+  "cat-std":{ name:"Стандарт", color:"#5b9bff" },
   "cat-new":{ name:"Новачок",  color:"#2dd4bf" },
 };
 const RAW = [];
@@ -63,20 +50,22 @@ const fmtDate = d => {
 };
 const priceOf  = b => (b.price || 0) + (b.surcharge || 0);
 const initials = n => n.split(" ").map(p=>p[0]).slice(0,2).join("").toUpperCase();
-const typeColor = t => t==="school" ? GREEN : GOLD;
+const typeColor = t => t==="school" ? "#7ed957" : "#f7c948";
 const typeGrad  = t => t==="school"
   ? "linear-gradient(145deg,#223020,#182215)"
   : "linear-gradient(145deg,#352d10,#211c08)";
 
 const STATUS_MAP_BASE = {
-  pending:   { color:ACCENT,  bg:"rgba(255,90,60,0.15)"   },
-  confirmed: { color:GREEN,   bg:"rgba(126,217,87,0.15)"  },
-  cancelled: { color:FAINT,   bg:"rgba(255,255,255,0.07)" },
-  noshow:    { color:RED,     bg:"rgba(239,68,68,0.18)"   },
+  pending:   { color:"#ff5a3c", bg:"rgba(255,90,60,0.15)"   },
+  confirmed: { color:"#7ed957", bg:"rgba(126,217,87,0.15)"  },
+  completed: { color:"#5b9bff", bg:"rgba(59,130,246,0.15)"  },
+  cancelled: { color:"#5a5c62", bg:"rgba(255,255,255,0.07)" },
+  noshow:    { color:"#ef4444", bg:"rgba(239,68,68,0.18)"   },
 };
 const getStatusMap = t => ({
   pending:   { ...STATUS_MAP_BASE.pending,   label:t('bk.status.pending')   },
   confirmed: { ...STATUS_MAP_BASE.confirmed, label:t('bk.status.confirmed') },
+  completed: { ...STATUS_MAP_BASE.completed, label:"Завершено"              },
   cancelled: { ...STATUS_MAP_BASE.cancelled, label:t('bk.status.cancelled') },
   noshow:    { ...STATUS_MAP_BASE.noshow,    label:t('bk.status.noshow')    },
 });
@@ -89,6 +78,7 @@ function Chip({ label, color, bg }) {
 }
 
 function InfoChip({ value, color }) {
+  const { BG_DEEP, SURF_LO, SI } = useContext(ThemeContext);
   return (
     <div style={{background:`linear-gradient(135deg,${BG_DEEP},${SURF_LO})`,boxShadow:SI,borderRadius:8,padding:"5px 11px"}}>
       <span style={{fontSize:12,fontWeight:700,color}}>{value}</span>
@@ -97,6 +87,7 @@ function InfoChip({ value, color }) {
 }
 
 function Progress({ hours, total=40 }) {
+  const { BG_DEEP, FAINT, ACCENT, ACC_HI, GREEN, BLUE, SI } = useContext(ThemeContext);
   const pct  = Math.min(100,Math.round((hours/total)*100));
   const done = hours >= total;
   return (
@@ -139,15 +130,17 @@ const Ico = {
   viber:    <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 1C6.48 1 2 5.48 2 11c0 3.18 1.49 6.01 3.82 7.88V22l3.78-2.1A10.07 10.07 0 0 0 12 20.07c5.52 0 10-4.5 10-10S17.52 1 12 1zm4.5 13.5c-.28.27-.65.42-1.03.42-.37 0-.73-.14-1-.41L12.53 12.57c-.55-.55-.55-1.44 0-1.99l.38-.38c.27-.27.27-.71 0-.98-.27-.27-.71-.27-.98 0l-.38.38c-1.1 1.1-1.1 2.88 0 3.98l1.94 1.94c.55.55.55 1.44 0 1.99l-.01.01c-.55.55-1.44.55-1.99 0L9.99 16.02c-1.17-1.17-1.17-3.07 0-4.24l.79-.79 1.03-1.03c.55-.55 1.44-.55 1.99 0l1.94 1.94c.27.27.27.71 0 .98-.27.27-.71.27-.98 0L12.82 10.94c-.55-.55-1.44-.55-1.99 0l-.79.79c-.47.47-.47 1.23 0 1.7l1.94 1.94c1.65 1.65 1.65 4.34 0 5.99z"/></svg>,
   telegram: <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>,
   check:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="5 12 10 17 19 8"/></svg>,
+  complete: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
   noshow:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg>,
   trash:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>,
   reschedule:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>,
   delete:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  chevron:  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={DIM} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+  chevron:  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8b8d93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
 };
 
 // ─── BOOKING CARD (expand / collapse) ──────────────────────────
-function BookingCard({ b, expanded, onToggle, onConfirm, onCancel, onNoshow, onDelete, svcs }) {
+function BookingCard({ b, expanded, onToggle, onConfirm, onCancel, onNoshow, onComplete, onDelete, svcs, showComplete }) {
+  const { SURF_HI, SURFACE, BORDER, TEXT, DIM, FAINT, ACCENT, BLUE, GOLD, PURPLE, BG_DEEP, SURF_LO, SI, SO } = useContext(ThemeContext);
   const svc   = (svcs || SERVICES)[b.svcId];
   const cat   = b.catId ? CATEGORIES[b.catId] : null;
   const STATUS_MAP = getStatusMap(T);
@@ -162,7 +155,10 @@ function BookingCard({ b, expanded, onToggle, onConfirm, onCancel, onNoshow, onD
     ...(b.status==="pending" ? [
       { label:"Підтвердити", gr:"linear-gradient(145deg,#9ee07a,#5fb83d)", icon:Ico.check, fn:()=>onConfirm(b.id) },
     ] : []),
-    ...(b.status!=="noshow" ? [
+    ...(b.status==="confirmed" && showComplete ? [
+      { label:"Завершити", gr:"linear-gradient(145deg,#60a5fa,#2563eb)", icon:Ico.complete, fn:()=>onComplete(b.id) },
+    ] : []),
+    ...(b.status!=="noshow" && b.status!=="completed" ? [
       { label:"Не прийшов", gr:"linear-gradient(145deg,#f87171,#dc2626)", icon:Ico.noshow, fn:()=>onNoshow(b.id) },
     ] : []),
     ...(b.status!=="cancelled" ? [
@@ -300,6 +296,7 @@ function BookingCard({ b, expanded, onToggle, onConfirm, onCancel, onNoshow, onD
 
 // ─── QUICK STATUS FILTERS ──────────────────────────────────────
 function QuickFilters({ active, onChange }) {
+  const { SURF_HI, SURFACE, DIM, FAINT, ACCENT, GREEN, RED, SO } = useContext(ThemeContext);
   const opts=[
     {k:"all",      l:"Всі",         c:DIM  },
     {k:"pending",  l:"Очікують",    c:ACCENT},
@@ -325,6 +322,7 @@ function QuickFilters({ active, onChange }) {
 
 // ─── FILTER SHEET ───────────────────────────────────────────────
 function FilterSheet({ filters, setFilters, sortBy, setSortBy, groupBy, setGroupBy, onClose, svcs }) {
+  const { BG, SURFACE, SURF_HI, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO } = useContext(ThemeContext);
   const FChip = ({label,active,onClick}) => (
     <button onClick={onClick} style={{
       padding:"7px 14px", borderRadius:12, border:"none", cursor:"pointer",
@@ -399,6 +397,7 @@ function FilterSheet({ filters, setFilters, sortBy, setSortBy, groupBy, setGroup
 
 // ─── ADD TO QUEUE MODAL ─────────────────────────────────────────
 function AddToQueueModal({ onSave, onClose, svcs }) {
+  const { BG, BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, SO } = useContext(ThemeContext);
   const [form, setForm] = useState({ name:"", phone:"", svcId:"sv1" });
   const upd = (k,v) => setForm(f=>({...f,[k]:v}));
   const valid = form.name.trim() && form.phone.trim();
@@ -450,6 +449,7 @@ function AddToQueueModal({ onSave, onClose, svcs }) {
 
 // ─── QUEUE OFFER MODAL ──────────────────────────────────────────
 function QueueOfferModal({ cancelledBk, waiting, queueMode, onInvite, onClose, svcsMap }) {
+  const { BG, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, PURPLE, GOLD, SO } = useContext(ThemeContext);
   const [selected, setSelected] = useState(
     queueMode === "fifo" ? [waiting[0]?.id] : queueMode === "broadcast" ? waiting.map(q=>q.id) : []
   );
@@ -500,6 +500,20 @@ function QueueOfferModal({ cancelledBk, waiting, queueMode, onInvite, onClose, s
 
 // ─── MAIN VIEW ─────────────────────────────────────────────────
 export default function BookingsView({ settings }) {
+  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, PURPLE, GOLD, GREEN, SI, SO } = useContext(ThemeContext);
+  const css = `
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-thumb{background:${BORDER};border-radius:3px}
+textarea{color-scheme:dark}
+.icon3d{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;position:relative;overflow:hidden;flex-shrink:0;box-shadow:-2px 4px 10px rgba(0,0,0,0.5),inset 1px 1px 0 rgba(255,255,255,0.25),inset -1px -1px 0 rgba(0,0,0,0.3)}
+.icon3d::before{content:'';position:absolute;top:0;right:0;width:60%;height:50%;background:radial-gradient(ellipse at top right,rgba(255,255,255,0.4) 0%,transparent 70%);pointer-events:none}
+.icon3d>svg{position:relative;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.4))}
+@keyframes expand-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.expand-body{animation:expand-in .18s ease both}
+@keyframes bk-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.bk-in{animation:bk-in .2s ease both}
+`;
   const lang = useContext(LangContext);
   const t = createT(lang);
   const [data,       setData]       = useState(RAW); // RAW as initial fallback
@@ -639,9 +653,10 @@ export default function BookingsView({ settings }) {
 
     // Queue invitations are handled automatically by the onSlotFreed Cloud Function (FIFO)
   };
-  const confirm = id => setStatus(id, "confirmed");
-  const cancel  = id => setStatus(id, "cancelled");
-  const noshow  = id => setStatus(id, "noshow");
+  const confirm  = id => setStatus(id, "confirmed");
+  const cancel   = id => setStatus(id, "cancelled");
+  const noshow   = id => setStatus(id, "noshow");
+  const complete = id => setStatus(id, "completed");
   const deleteBooking = id => {
     const bk = data.find(b => b.id === id);
     if (!bk?.userId) return;
@@ -706,7 +721,7 @@ export default function BookingsView({ settings }) {
 
   return (
     <>
-      <style>{CSS}</style>
+      <style>{css}</style>
       <div style={{display:"flex",flexDirection:"column",gap:10,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
         {/* ── ЧЕРГА (спойлер) ── */}
@@ -792,7 +807,8 @@ export default function BookingsView({ settings }) {
             <div style={{display:"flex",flexDirection:"column",gap:7}}>
               {items.map(b=>(
                 <BookingCard key={b.id} b={b} expanded={expandedId===b.id} svcs={svcsMap}
-                  onToggle={()=>toggle(b.id)} onConfirm={confirm} onCancel={cancel} onNoshow={noshow} onDelete={deleteBooking}/>
+                  onToggle={()=>toggle(b.id)} onConfirm={confirm} onCancel={cancel} onNoshow={noshow} onComplete={complete} onDelete={deleteBooking}
+                  showComplete={settings?.showCompleteBtn !== false}/>
               ))}
             </div>
           </div>
