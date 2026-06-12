@@ -714,6 +714,20 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const emptyHoldPosRef   = useRef(null);
   const dayLongPressRef   = useRef(null);
   const dayLongFiredRef   = useRef(false);
+  const [scheduleLocked, setScheduleLocked] = useState(false);
+  const lockHoldTimerRef  = useRef(null);
+  const lockHoldFiredRef  = useRef(false);
+
+  const handleLockDown = (e) => {
+    e.preventDefault();
+    lockHoldFiredRef.current = false;
+    lockHoldTimerRef.current = setTimeout(() => {
+      lockHoldFiredRef.current = true;
+      navigator.vibrate?.([30, 40, 60]);
+      setScheduleLocked(v => !v);
+    }, 700);
+  };
+  const handleLockUp = () => clearTimeout(lockHoldTimerRef.current);
 
   const toggleDayBlocked = (dateStr) => {
     setSettings(s => {
@@ -770,6 +784,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const minToPx = (m) => (m - effectiveWorkStart*60) * PX_PER_MIN;
 
   const onPointerDown = (e, b, mode) => {
+    if (scheduleLocked) return;
     e.preventDefault(); e.stopPropagation();
     const isBlock = b.type === "block";
     // Зберігаємо початкові позиції всіх сегментів — потрібно для відновлення слотів в onUp
@@ -1165,6 +1180,31 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
               })}
             </div>
           </div>
+          {/* Замок — в нижній частині стовпця часу, вирівняний із сум-рядком */}
+          <div
+            onPointerDown={handleLockDown}
+            onPointerUp={handleLockUp}
+            onPointerCancel={handleLockUp}
+            onContextMenu={e=>e.preventDefault()}
+            style={{
+              height:30, flexShrink:0,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              WebkitUserSelect:"none", userSelect:"none", touchAction:"none", cursor:"pointer",
+            }}
+          >
+            {scheduleLocked ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(239,68,68,0.95)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                style={{filter:"drop-shadow(0 0 5px rgba(239,68,68,0.5))"}}>
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+              </svg>
+            )}
+          </div>
         </div>
 
         {/* SCROLLABLE GRID — horizontal + vertical */}
@@ -1214,8 +1254,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             }}>
               {/* DATE HEADER — sticky top, moves with column horizontally */}
               <div
-                onClick={e=>{ e.stopPropagation(); if(dayLongFiredRef.current){dayLongFiredRef.current=false;return;} if(isPastDay || isLoadingCol || isClosedDay) return; hasAnySlotsCol ? clearDaySlots(absDay) : generateDaySlots(absDay); }}
-                onPointerDown={e=>{ if(isPastDay) return; clearTimeout(dayLongPressRef.current); dayLongFiredRef.current=false; dayLongPressRef.current=setTimeout(()=>{ dayLongFiredRef.current=true; toggleDayBlocked(dateStrCol); }, 600); }}
+                onClick={e=>{ e.stopPropagation(); if(scheduleLocked) return; if(dayLongFiredRef.current){dayLongFiredRef.current=false;return;} if(isPastDay || isLoadingCol || isClosedDay) return; hasAnySlotsCol ? clearDaySlots(absDay) : generateDaySlots(absDay); }}
+                onPointerDown={e=>{ if(scheduleLocked || isPastDay) return; clearTimeout(dayLongPressRef.current); dayLongFiredRef.current=false; dayLongPressRef.current=setTimeout(()=>{ dayLongFiredRef.current=true; toggleDayBlocked(dateStrCol); }, 600); }}
                 onPointerUp={()=>clearTimeout(dayLongPressRef.current)}
                 onPointerLeave={()=>clearTimeout(dayLongPressRef.current)}
                 style={{
@@ -1258,7 +1298,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
               <div
                 onClick={e=>{ if(xJustShownRef.current){ xJustShownRef.current=false; return; } if(quickCancelId){ xVisibleRef.current=false; setQuickCancelId(null); } }}
                 onPointerDown={e=>{
-                  if (isPastDay) return;
+                  if (scheduleLocked || isPastDay) return;
                   if (e.button > 0) return;
                   if (dragRef.current || pendingDragRef.current) return;
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -1335,7 +1375,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 return (
                   <div key={`os-${time}`}
                     onPointerDown={e=>{
-                      if (isPastDay) return;
+                      if (scheduleLocked || isPastDay) return;
                       e.stopPropagation();
                       slotHoldFiredRef.current = false;
                       slotHoldTimerRef.current = setTimeout(()=>{
