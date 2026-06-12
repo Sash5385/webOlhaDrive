@@ -37,11 +37,11 @@ function Toggle({ on, onChange }) {
   );
 }
 
-function NumInput({ value, onChange, min=0, max=999, suffix="" }) {
+function NumInput({ value, onChange, min=0, max=999, suffix="", step=1 }) {
   const { BG_DEEP, SURF_HI, SURFACE, TEXT, SO, SI } = useContext(ThemeContext);
   return (
     <div style={{display:"flex",alignItems:"center",gap:4,background:BG_DEEP,borderRadius:9,boxShadow:SI,padding:"4px 6px"}}>
-      <button onClick={()=>onChange(Math.max(min,value-1))} style={{
+      <button onClick={()=>onChange(Math.max(min,value-step))} style={{
         width:26,height:26,borderRadius:7,border:"none",cursor:"pointer",
         background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:TEXT,fontSize:14,
         display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:SO,
@@ -49,7 +49,7 @@ function NumInput({ value, onChange, min=0, max=999, suffix="" }) {
       <span style={{fontSize:13,fontWeight:700,color:TEXT,minWidth:32,textAlign:"center"}}>
         {value}{suffix}
       </span>
-      <button onClick={()=>onChange(Math.min(max,value+1))} style={{
+      <button onClick={()=>onChange(Math.min(max,value+step))} style={{
         width:26,height:26,borderRadius:7,border:"none",cursor:"pointer",
         background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:TEXT,fontSize:14,
         display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:SO,
@@ -434,6 +434,35 @@ select{color-scheme:${isKava?"light":"dark"}}
         </Section>
 
         {/* ── PUSH ДІАГНОСТИКА ── */}
+        {/* ── НАДБАВКИ ── */}
+        <Section title="Надбавки до уроків" icon="💰">
+          <div style={{fontSize:12,color:FAINT,marginBottom:12,marginTop:8}}>
+            Суми відображаються в меню слота при виборі надбавки.
+          </div>
+          {(settings.surcharges || []).map((amt, i) => (
+            <div key={i} style={{
+              display:"flex",alignItems:"center",gap:10,marginBottom:8,
+              padding:"10px 12px",borderRadius:12,
+              background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,boxShadow:SO,
+            }}>
+              <span style={{fontSize:13,color:GOLD,fontWeight:700,flex:1}}>Надбавка {i+1}</span>
+              <NumInput
+                value={amt}
+                onChange={v=>upd("surcharges", (settings.surcharges||[]).map((x,j)=>j===i?v:x))}
+                min={50} max={99999} suffix="₴" step={50}
+              />
+              <button onClick={()=>upd("surcharges", (settings.surcharges||[]).filter((_,j)=>j!==i))} style={{
+                background:"none",border:"none",cursor:"pointer",
+                color:"rgba(248,113,113,0.8)",fontSize:20,lineHeight:1,padding:"0 4px",
+              }}>×</button>
+            </div>
+          ))}
+          <button onClick={()=>upd("surcharges", [...(settings.surcharges||[]), 100])} style={{
+            width:"100%",padding:"11px",borderRadius:12,border:`1px dashed rgba(255,255,255,0.15)`,cursor:"pointer",
+            background:"transparent",color:FAINT,fontSize:13,fontWeight:700,marginTop:2,
+          }}>+ Додати надбавку</button>
+        </Section>
+
         <Section title="Push-сповіщення" icon="🔔" defaultOpen={true}>
           <PushDiag />
         </Section>

@@ -378,6 +378,8 @@ const DEFAULT_SETTINGS = {
   autoConfirm: { enabled:true },
   autoCancel: { enabled:true },
   autoQueueOffer: { enabled:true },
+  // surcharges
+  surcharges: [100, 200, 300],
   // services
   services: [
     { id:"sv1", name:"Автошкола 1 год", type:"school",  duration:60,  price:600,  colorId:"green",  active:true,  description:"Урок з автошколи" },
@@ -1882,11 +1884,11 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           }}>
             <span>👑</span> VIP слот
           </button>
-          {[100,200,300].map((amt,i)=>(
+          {(settings.surcharges?.length ? settings.surcharges : [100,200,300]).map((amt,i,arr)=>(
             <button key={amt} onClick={()=>applySlotOption(slotOptions.dateStr, slotOptions.time, amt)} style={{
               width:"100%",padding:"11px 14px",border:"none",cursor:"pointer",
               background:"none",
-              borderBottom: i<2 ? `1px solid rgba(255,255,255,0.05)` : "none",
+              borderBottom: i<arr.length-1 ? `1px solid rgba(255,255,255,0.05)` : "none",
               color:GOLD,fontSize:13,fontWeight:700,
               display:"flex",alignItems:"center",justifyContent:"space-between",
             }}>
