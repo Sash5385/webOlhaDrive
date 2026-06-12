@@ -454,6 +454,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const [windowW, setWindowW] = useState(window.innerWidth);
   const [windowH, setWindowH] = useState(window.innerHeight);
   const PAST_DAYS = 30;
+  const VBUF = 5;
   const [dayOffset, setDayOffset] = useState(-PAST_DAYS);
   const dragRef = useRef(null);
   const calcRef = useRef({});
@@ -468,6 +469,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const gridWrapRef = useRef(null);
   const sumRowRef   = useRef(null);
   const sumInnerRef = useRef(null);
+  const vRangeRef   = useRef({ s: Math.max(0, PAST_DAYS - VBUF), e: PAST_DAYS + 30 });
+  const [vRange, setVRange] = useState({ s: Math.max(0, PAST_DAYS - VBUF), e: PAST_DAYS + 30 });
   const xVisibleRef = useRef(false);
   const xJustShownRef = useRef(false);
   const snapTimerRef = useRef(null);
@@ -675,6 +678,23 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     el.style.transform = "";
   }, [dayOffset]);
 
+  const computeVRange = () => {
+    const el = gridRef.current;
+    if (!el) return;
+    const { COL_W: cw, N_DAYS: nd } = calcRef.current;
+    if (!cw || !nd) return;
+    const stride = cw + 4;
+    const sl = el.scrollLeft;
+    const firstVis = Math.floor(sl / stride);
+    const lastVis  = Math.ceil((sl + el.clientWidth) / stride);
+    const s = Math.max(0, firstVis - VBUF);
+    const e = Math.min(nd - 1, lastVis + VBUF);
+    if (s !== vRangeRef.current.s || e !== vRangeRef.current.e) {
+      vRangeRef.current = { s, e };
+      setVRange({ s, e });
+    }
+  };
+
   // Скролимо до сьогодні при зміні daysShown (включаючи завантаження settings з Firebase)
   useEffect(() => {
     if (!gridRef.current) return;
@@ -682,7 +702,10 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     const left = PAST_DAYS * (colW + 4);
     gridRef.current.scrollLeft = left;
     if (headersInnerRef.current) headersInnerRef.current.style.transform = `translateX(-${left}px)`;
+    computeVRange();
   }, [settings.daysShown]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useLayoutEffect(() => { computeVRange(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [bubbleData, setBubbleData] = useState(null);
   const [formData, setFormData] = useState(null);
   const [createSlotData, setCreateSlotData] = useState(null); // {day, startMin}
@@ -795,7 +818,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           const dy = e.clientY - swipeRef.current.startY;
           if (Math.abs(dx) > Math.abs(dy) * 0.7 && Math.abs(dx) > 6) {
             gridWrapRef.current.style.transform = `translateX(${dx}px)`;
-            if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(${dx}px)`;
+            if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(${-(gridRef.current?.scrollLeft ?? 0) + dx}px)`;
           }
         }
       }
@@ -942,7 +965,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       if (gridWrapRef.current) {
         gridWrapRef.current.style.transition = "none";
         gridWrapRef.current.style.transform = "";
-        if(sumInnerRef.current) sumInnerRef.current.style.transform = "";
+        if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(-${gridRef.current?.scrollLeft ?? 0}px)`;
       }
     };
     const onResize = () => { setWindowW(window.innerWidth); setWindowH(window.innerHeight); };
@@ -1157,14 +1180,17 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           onScroll={e=>{
             if (timeColRef.current)
               timeColRef.current.style.transform = `translateY(-${e.currentTarget.scrollTop}px)`;
-            if (sumRowRef.current)
-              sumRowRef.current.scrollLeft = e.currentTarget.scrollLeft;
+            if (sumInnerRef.current)
+              sumInnerRef.current.style.transform = `translateX(-${e.currentTarget.scrollLeft}px)`;
+            computeVRange();
           }}
           onContextMenu={e=>e.preventDefault()}
           style={{flex:1, overflowX:"auto", overflowY:"auto", touchAction:"pan-x pan-y", WebkitOverflowScrolling:"touch", userSelect:"none", WebkitUserSelect:"none"}}
         >
           <div ref={gridWrapRef} style={{display:"flex", paddingTop:2}}>
-          {days.map((day,colIdx)=>{
+          {vRange.s > 0 && <div style={{width:vRange.s*(COL_W+4), flexShrink:0}}/>}
+          {days.slice(vRange.s, vRange.e+1).map((day,_i)=>{
+            const colIdx = vRange.s + _i;
             const absDay = dayOffset + colIdx;
             const dateStrCol = absDayToDateStr(absDay);
             const isOpenCol = Object.values(openSlots[dateStrCol] || {}).some(s => s.available);
@@ -1184,7 +1210,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             return (
             <div key={absDay} style={{
               display:"flex", flexDirection:"column", flexShrink:0,
-              width:COL_W, marginRight:colIdx<days.length-1?4:0,
+              width:COL_W, marginRight:colIdx<N_DAYS-1?4:0,
             }}>
               {/* DATE HEADER — sticky top, moves with column horizontally */}
               <div
@@ -1620,6 +1646,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             </div>
             );
           })}
+          {(N_DAYS-1-vRange.e)>0 && <div style={{width:(N_DAYS-1-vRange.e)*(COL_W+4)-4, flexShrink:0}}/>}
           </div>
         </div>
 
@@ -1630,7 +1657,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
         <div style={{width:TIME_COL_W, flexShrink:0}}/>
         <div ref={sumRowRef} style={{flex:1, overflowX:"hidden"}}>
           <div ref={sumInnerRef} style={{display:"flex"}}>
-            {days.map((day,colIdx)=>{
+            {vRange.s > 0 && <div style={{width:vRange.s*(COL_W+4), flexShrink:0}}/>}
+            {days.slice(vRange.s, vRange.e+1).map((day,_i)=>{
+              const colIdx = vRange.s + _i;
               const absDay2 = dayOffset + colIdx;
               const daySum = bookings
                 .filter(b=>b.day===absDay2 && b.type!=="block" && b.type!=="vip-slot" && b.status!=="cancelled" && b.status!=="noshow")
@@ -1644,7 +1673,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   return s+price;
                 },0);
               return (
-                <div key={absDay2} style={{width:COL_W, flexShrink:0, marginRight:colIdx<days.length-1?4:0}}>
+                <div key={absDay2} style={{width:COL_W, flexShrink:0, marginRight:colIdx<N_DAYS-1?4:0}}>
                   {daySum>0 ? (
                     <div style={{
                       background:`linear-gradient(180deg,#3a3b40,#2e2f34)`,
@@ -1661,6 +1690,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 </div>
               );
             })}
+            {(N_DAYS-1-vRange.e)>0 && <div style={{width:(N_DAYS-1-vRange.e)*(COL_W+4)-4, flexShrink:0}}/>}
           </div>
         </div>
       </div>
