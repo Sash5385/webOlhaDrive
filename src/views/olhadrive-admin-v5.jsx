@@ -835,7 +835,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           const dy = e.clientY - swipeRef.current.startY;
           if (Math.abs(dx) > Math.abs(dy) * 0.7 && Math.abs(dx) > 6) {
             gridWrapRef.current.style.transform = `translateX(${dx}px)`;
-            if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(${-(gridRef.current?.scrollLeft ?? 0) + dx}px)`;
+            if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(${dx}px)`;
           }
         }
       }
@@ -982,7 +982,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       if (gridWrapRef.current) {
         gridWrapRef.current.style.transition = "none";
         gridWrapRef.current.style.transform = "";
-        if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(-${gridRef.current?.scrollLeft ?? 0}px)`;
+        if(sumInnerRef.current) sumInnerRef.current.style.transform = "";
       }
     };
     const onResize = () => { setWindowW(window.innerWidth); setWindowH(window.innerHeight); };
@@ -1114,6 +1114,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 
   const [vipSlotModal, setVipSlotModal] = useState(null);
   const [slotOptions, setSlotOptions] = useState(null); // { dateStr, time, slot }
+  const [personalEventData, setPersonalEventData] = useState(null); // { dateStr, time }
+  const [personalEventView, setPersonalEventView] = useState(null); // booking for viewing
 
   const isStickySlot = (dateStr, time) => {
     if (!settings.stickyTimeEnabled) return true;
@@ -1121,7 +1123,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     const slotMin = h * 60 + m;
     const today = new Date(); today.setHours(0,0,0,0);
     const absDay = Math.round((new Date(dateStr + "T12:00:00") - today) / 86400000);
-    const dayBkgs = bookings.filter(b => b.day === absDay && b.type !== "block" && b.type !== "vip-slot");
+    const dayBkgs = bookings.filter(b => b.day === absDay && b.type !== "block" && b.type !== "vip-slot" && b.type !== "personal");
     const adjBefore = dayBkgs.some(b => b.startMin === slotMin + 60);
     const adjAfter  = dayBkgs.some(b => b.startMin + b.durMin === slotMin);
     if (settings.stickyTime === "before") return adjBefore;
@@ -1222,8 +1224,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           onScroll={e=>{
             if (timeColRef.current)
               timeColRef.current.style.transform = `translateY(-${e.currentTarget.scrollTop}px)`;
-            if (sumInnerRef.current)
-              sumInnerRef.current.style.transform = `translateX(-${e.currentTarget.scrollLeft}px)`;
             computeVRange();
           }}
           onContextMenu={e=>e.preventDefault()}
@@ -1490,9 +1490,10 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 const isCancelling = cancellingSet.has(b.id);
                 const isBlock = b.type === "block";
                 const isVipSlot = b.type === "vip-slot";
+                const isPersonal = b.type === "personal";
                 const slotTimeStr = String(Math.floor(b.startMin/60)).padStart(2,'0')+':'+String(b.startMin%60).padStart(2,'0');
                 const queueCount = b.date ? (queueMap[`${b.date}_${slotTimeStr}`] || 0) : 0;
-                const isDimmed = !isBlock && !isVipSlot && (b.status==="noshow" || isCancelling);
+                const isDimmed = !isBlock && !isVipSlot && !isPersonal && (b.status==="noshow" || isCancelling);
                 const svc = settings.services.find(s=>s.id===b.serviceId)
                          || settings.services.find(s=>s.active && s.type===(b.serviceType||b.type) && Number(s.duration)===b.durMin);
                 const basePrice = svc
@@ -1512,7 +1513,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   }}>
                     {/* Сам слот */}
                     <div
-                      className={`slot-base ${isBlock?"":"slot-colored"} ${!isBlock&&isPending?"slot-pending-ring":""} ${!isBlock&&holdId===b.id?"slot-holding":""} ${!isBlock&&shineId===b.id&&!isDimmed?"shine-active":""}`}
+                      className={`slot-base ${(isBlock||isPersonal)?"":"slot-colored"} ${!isBlock&&!isPersonal&&isPending?"slot-pending-ring":""} ${!isBlock&&!isPersonal&&holdId===b.id?"slot-holding":""} ${!isBlock&&!isPersonal&&shineId===b.id&&!isDimmed?"shine-active":""}`}
                       onPointerDown={e=>onPointerDown(e,b,"move")}
                       onContextMenu={e=>e.preventDefault()}
                       onClick={e=>{
@@ -1521,6 +1522,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         if(quickCancelId){ xVisibleRef.current=false; setQuickCancelId(null); return; }
                         if(dragEndedRef.current) return;
                         if(isVipSlot){ setVipSlotModal(b); return; }
+                        if(isPersonal){ setPersonalEventView(b); return; }
                         if(isBlock){ setBlockModal(b); return; }
                         if(isCancelling){
                           clearTimeout(cancelTimers.current[b.id]);
@@ -1538,6 +1540,13 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         display:"flex", flexDirection:"column",
                         alignItems:"flex-start", justifyContent:"center",
                         padding:"0 7px", overflow:"hidden",
+                      } : isPersonal ? {
+                        position:"relative", width:"100%", height:"100%",
+                        borderRadius:8,
+                        background:"rgba(45,212,191,0.13)",
+                        border:"1.5px dashed rgba(45,212,191,0.45)",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        overflow:"hidden",
                       } : isBlock ? {
                         position:"relative", width:"100%", height:"100%",
                         borderRadius:8,
@@ -1556,10 +1565,23 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         transition:"opacity 0.4s, filter 0.4s",
                       }}>
                       <div className="slot-handle top" onPointerDown={e=>onPointerDown(e,b,"top")}/>
-                      {!isBlock && !isVipSlot && <div className="shine-layer"/>}
+                      {!isBlock && !isVipSlot && !isPersonal && <div className="shine-layer"/>}
                       {isVipSlot && height >= 14 && (
                         <span style={{fontSize:11, lineHeight:1}}>👑</span>
                       )}
+                      {isPersonal && height >= 14 && (() => {
+                        const maxFs = Math.min(11, Math.floor(COL_W / 5.5));
+                        const nameLines = b.name ? b.name.split(" ") : ["Подія"];
+                        const fs = Math.max(6, Math.min(maxFs, Math.floor((height - 8) / (Math.min(nameLines.length, 2) * 1.3 + 1))));
+                        return (
+                          <div style={{position:"absolute",top:2,left:4,right:2,bottom:2,display:"flex",flexDirection:"column",justifyContent:"center",gap:1,overflow:"hidden"}}>
+                            <span style={{fontSize:Math.min(fs+1,11),lineHeight:1}}>📌</span>
+                            {nameLines.slice(0,2).map((word,i)=>(
+                              <div key={i} style={{fontSize:fs,fontWeight:700,color:"#2dd4bf",lineHeight:1.2,whiteSpace:"normal",wordBreak:"break-word",overflowWrap:"anywhere",textShadow:"0 1px 2px rgba(0,0,0,0.6)"}}>{word}</div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                       {isBlock && height >= 18 && (() => {
                         const sz = Math.min(height * 0.62, 36);
                         return (
@@ -1570,7 +1592,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                           </svg>
                         );
                       })()}
-                      {!isBlock && !isVipSlot && height >= 12 && (() => {
+                      {!isBlock && !isVipSlot && !isPersonal && height >= 12 && (() => {
                         const [fName, ...lParts] = b.name.split(' ');
                         const lName = lParts.join(' ');
                         const priceColor = b.surcharge ? GOLD : "rgba(255,255,255,0.9)";
@@ -1690,21 +1712,15 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           })}
           {(N_DAYS-1-vRange.e)>0 && <div style={{width:(N_DAYS-1-vRange.e)*(COL_W+4)-4, flexShrink:0}}/>}
           </div>
-        </div>
 
-      </div>{/* /outer flex */}
-
-      {/* ── Daily income sums — fixed row below grid, synced with horizontal scroll ── */}
-      <div style={{display:"flex", flexShrink:0, padding:"3px 3px 5px"}}>
-        <div style={{width:TIME_COL_W, flexShrink:0}}/>
-        <div ref={sumRowRef} style={{flex:1, overflowX:"hidden"}}>
-          <div ref={sumInnerRef} style={{display:"flex"}}>
+          {/* ── Daily income sums — sticky bottom, scrolls naturally with gridRef ── */}
+          <div ref={sumInnerRef} style={{display:"flex", position:"sticky", bottom:0, zIndex:5, padding:"3px 0 5px"}}>
             {vRange.s > 0 && <div style={{width:vRange.s*(COL_W+4), flexShrink:0}}/>}
             {days.slice(vRange.s, vRange.e+1).map((day,_i)=>{
               const colIdx = vRange.s + _i;
               const absDay2 = dayOffset + colIdx;
               const daySum = bookings
-                .filter(b=>b.day===absDay2 && b.type!=="block" && b.type!=="vip-slot" && b.status!=="cancelled" && b.status!=="noshow")
+                .filter(b=>b.day===absDay2 && b.type!=="block" && b.type!=="vip-slot" && b.type!=="personal" && b.status!=="cancelled" && b.status!=="noshow")
                 .reduce((s,b)=>{
                   const svc=(settings.services||[]).find(sv=>sv.id===b.serviceId||sv.id===b.svcId);
                   const price = svc
@@ -1735,7 +1751,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             {(N_DAYS-1-vRange.e)>0 && <div style={{width:(N_DAYS-1-vRange.e)*(COL_W+4)-4, flexShrink:0}}/>}
           </div>
         </div>
-      </div>
+
+      </div>{/* /outer flex */}
     </Card>
 
     <BookingModal booking={localSelectedBooking} onClose={()=>setLocalSelectedBooking(null)}
@@ -1827,6 +1844,16 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             color:"#fff",fontSize:12,fontWeight:800,
             boxShadow:`0 4px 12px rgba(245,158,11,0.4)`,
           }}>👤 Записати учня</button>
+          <button onClick={()=>{
+            const sh = String(Math.floor(bubbleData.startMin/60)).padStart(2,'0');
+            const sn = String(bubbleData.startMin%60).padStart(2,'0');
+            setPersonalEventData({ dateStr: absDayToDateStr(bubbleData.day), time: `${sh}:${sn}` });
+            setBubbleData(null);
+          }} style={{
+            width:"100%",padding:"9px 12px",borderRadius:10,border:"none",cursor:"pointer",
+            background:"rgba(45,212,191,0.15)",
+            color:"#2dd4bf",fontSize:12,fontWeight:800,marginTop:6,
+          }}>📌 Особиста подія</button>
         </div>
       </div>
     )}
@@ -1868,6 +1895,19 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             display:"flex",alignItems:"center",gap:9,
           }}>
             <span>👤</span> Додати букінг
+          </button>
+
+          {/* Особиста подія */}
+          <button onClick={()=>{
+            setPersonalEventData({ dateStr: slotOptions.dateStr, time: slotOptions.time, slot: slotOptions.slot });
+            setSlotOptions(null);
+          }} style={{
+            width:"100%",padding:"11px 14px",border:"none",cursor:"pointer",
+            background:"none",borderBottom:`1px solid rgba(255,255,255,0.05)`,
+            color:"#2dd4bf",fontSize:13,fontWeight:700,
+            display:"flex",alignItems:"center",gap:9,
+          }}>
+            <span>📌</span> Особиста подія
           </button>
 
           {/* VIP + надбавки — для відкритих і закритих слотів */}
@@ -2002,6 +2042,70 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       bookings={bookings}/>
 
     {createSlotData && <CreateSlotSheet data={createSlotData} settings={settings} onClose={()=>setCreateSlotData(null)}/>}
+
+    <PersonalEventModal
+      data={personalEventData}
+      onClose={()=>setPersonalEventData(null)}
+      onConfirm={b=>{
+        update(ref(db, `bookings/admin/${b.id}`), b).catch(()=>{});
+        const slotUpd = {};
+        for (let i = 0; i < b.durMin; i += 30) {
+          const sm = b.startMin + i;
+          const sh = String(Math.floor(sm/60)).padStart(2,'0');
+          const sn = String(sm%60).padStart(2,'0');
+          slotUpd[`timeslots/${b.date}/slot${sh}${sn}/available`] = false;
+          slotUpd[`timeslots/${b.date}/slot${sh}${sn}/time`] = `${sh}:${sn}`;
+        }
+        update(ref(db, '/'), slotUpd).catch(()=>{});
+        setPersonalEventData(null);
+      }}
+    />
+
+    {personalEventView && (
+      <div onClick={()=>setPersonalEventView(null)} style={{
+        position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.6)",
+        display:"flex",alignItems:"center",justifyContent:"center",
+        backdropFilter:"blur(8px)",
+      }}>
+        <div onClick={e=>e.stopPropagation()} style={{
+          width:280,background:"#151719",borderRadius:20,overflow:"hidden",
+          boxShadow:"0 8px 40px rgba(0,0,0,0.7), 0 0 0 1.5px rgba(45,212,191,0.3)",
+        }}>
+          <div style={{padding:"14px 16px 12px",background:"rgba(45,212,191,0.1)",borderBottom:"1px solid rgba(45,212,191,0.15)"}}>
+            <div style={{fontSize:13,fontWeight:800,color:"#2dd4bf"}}>📌 {personalEventView.name}</div>
+            <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",marginTop:3}}>
+              {personalEventView.date} · {fmtTime(personalEventView.startMin)} · {personalEventView.durMin}хв
+            </div>
+          </div>
+          {personalEventView.note && (
+            <div style={{padding:"10px 16px",fontSize:13,color:"rgba(255,255,255,0.7)",lineHeight:1.5}}>
+              {personalEventView.note}
+            </div>
+          )}
+          <button onClick={()=>{
+            remove(ref(db, `bookings/admin/${personalEventView.id}`)).catch(()=>{});
+            const slotUpd = {};
+            for (let i = 0; i < personalEventView.durMin; i += 30) {
+              const sm = personalEventView.startMin + i;
+              const sh = String(Math.floor(sm/60)).padStart(2,'0');
+              const sn = String(sm%60).padStart(2,'0');
+              if (personalEventView.wasAdminBlocked) {
+                slotUpd[`timeslots/${personalEventView.date}/slot${sh}${sn}/available`] = false;
+                slotUpd[`timeslots/${personalEventView.date}/slot${sh}${sn}/adminBlocked`] = true;
+              } else {
+                slotUpd[`timeslots/${personalEventView.date}/slot${sh}${sn}/available`] = true;
+              }
+            }
+            update(ref(db, '/'), slotUpd).catch(()=>{});
+            setPersonalEventView(null);
+          }} style={{
+            width:"100%",padding:"12px",border:"none",cursor:"pointer",
+            borderTop:"1px solid rgba(255,255,255,0.06)",
+            background:"none",color:"#f87171",fontSize:13,fontWeight:700,
+          }}>Видалити</button>
+        </div>
+      </div>
+    )}
     </>
   );
 }
@@ -3357,6 +3461,134 @@ export default function App() {
           })()}/>
       </div>
     </>
+  );
+}
+
+function PersonalEventModal({ data, onClose, onConfirm }) {
+  const [title,  setTitle]  = useState("");
+  const [durMin, setDurMin] = useState(60);
+  const [note,   setNote]   = useState("");
+
+  useEffect(() => {
+    if (data) { setTitle(""); setDurMin(60); setNote(""); }
+  }, [!!data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!data) return null;
+
+  const [hh, mm] = data.time.split(":").map(Number);
+  const startMin = hh * 60 + mm;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const slotDate = new Date(data.dateStr + "T00:00:00");
+  const day = Math.round((slotDate - today) / 86400000);
+  const canSave = title.trim().length > 0;
+
+  const DUR_OPTIONS = [
+    { label:"30хв", value:30 },
+    { label:"1г",   value:60 },
+    { label:"1.5г", value:90 },
+    { label:"2г",   value:120 },
+    { label:"3г",   value:180 },
+  ];
+
+  return (
+    <div onClick={onClose} style={{
+      position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:200,
+      display:"flex",alignItems:"flex-end",justifyContent:"center",
+      backdropFilter:"blur(8px)",
+    }}>
+      <div onClick={e=>e.stopPropagation()} style={{
+        width:"100%",maxWidth:480,background:BG_DEEP,
+        borderRadius:"24px 24px 0 0",
+        boxShadow:"0 -2px 0 rgba(45,212,191,0.3), 0 -16px 60px rgba(0,0,0,0.8)",
+        maxHeight:"85vh",overflowY:"auto",
+        WebkitOverflowScrolling:"touch",scrollbarWidth:"none",
+      }}>
+        <div style={{
+          padding:"18px 18px 14px",
+          background:"linear-gradient(145deg,rgba(45,212,191,0.12),rgba(20,184,166,0.05))",
+          borderBottom:"1px solid rgba(45,212,191,0.15)",
+        }}>
+          <div style={{fontSize:18,fontWeight:800,color:"#2dd4bf",marginBottom:2}}>📌 Особиста подія</div>
+          <div style={{fontSize:12,color:DIM}}>{data.dateStr} · {data.time}</div>
+        </div>
+
+        <div style={{padding:"16px 18px 32px",display:"flex",flexDirection:"column",gap:18}}>
+          {/* Назва */}
+          <div>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Назва</div>
+            <input
+              autoFocus
+              value={title}
+              onChange={e=>setTitle(e.target.value)}
+              placeholder="Наприклад: Лікар, Справи..."
+              style={{
+                width:"100%",padding:"10px 12px",borderRadius:12,
+                background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",
+                color:"#fff",fontSize:14,outline:"none",boxSizing:"border-box",
+              }}
+            />
+          </div>
+
+          {/* Тривалість */}
+          <div>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Тривалість</div>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {DUR_OPTIONS.map(o=>(
+                <button key={o.value} onClick={()=>setDurMin(o.value)} style={{
+                  padding:"6px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
+                  background: durMin===o.value ? "rgba(45,212,191,0.2)" : "rgba(255,255,255,0.06)",
+                  color: durMin===o.value ? "#2dd4bf" : DIM,
+                  outline: durMin===o.value ? "1.5px solid rgba(45,212,191,0.5)" : "none",
+                }}>{o.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Нотатка */}
+          <div>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Нотатка (необов'язково)</div>
+            <textarea
+              value={note}
+              onChange={e=>setNote(e.target.value)}
+              rows={2}
+              placeholder="Деталі..."
+              style={{
+                width:"100%",padding:"10px 12px",borderRadius:12,resize:"none",
+                background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.1)",
+                color:"#fff",fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",
+              }}
+            />
+          </div>
+
+          <button
+            disabled={!canSave}
+            onClick={()=>{
+              if (!canSave) return;
+              onConfirm({
+                id: `personal-${Date.now()}`,
+                day, date: data.dateStr,
+                startMin, durMin,
+                name: title.trim(),
+                note: note.trim(),
+                type: "personal",
+                status: "personal",
+                tsc: "",
+                wasAdminBlocked: !!data.slot?.adminBlocked,
+                createdAt: Date.now(),
+                createdBy: "admin",
+              });
+            }}
+            style={{
+              width:"100%",padding:"13px",borderRadius:14,border:"none",cursor:"pointer",
+              background: canSave ? "linear-gradient(145deg,#2dd4bf,#14b8a6)" : "rgba(255,255,255,0.06)",
+              color: canSave ? "#fff" : FAINT,
+              fontSize:14,fontWeight:800,
+              boxShadow: canSave ? "0 4px 16px rgba(45,212,191,0.35)" : "none",
+            }}
+          >Зберегти</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
