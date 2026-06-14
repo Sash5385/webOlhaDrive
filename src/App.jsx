@@ -1,4 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, createContext, useContext } from "react";
+import { useAppUpdate } from "./hooks/useAppUpdate";
 import { ref, onValue, update, push, remove, get } from "firebase/database";
 import { db, registerAdminFCM, onAdminForegroundMessage } from "./firebase";
 import { useAdminAuth, LoginScreen } from "./AdminAuth";
@@ -769,6 +770,7 @@ const pendingDeletesRef = React.useRef(new Set());
     });
   };
 
+  const { needRefresh, updateServiceWorker } = useAppUpdate();
   const lang = settings.language || 'uk';
   useEffect(() => { setGlobalLang(lang); }, [lang]);
 
@@ -802,6 +804,11 @@ const pendingDeletesRef = React.useRef(new Set());
         </div>
         <BottomNav active={tab} onChange={switchTab} settings={settings} chatUnread={chatUnread}/>
       </div>
+      {needRefresh && (
+        <div className="update-banner" onClick={updateServiceWorker}>
+          Доступне оновлення — натисніть щоб оновити
+        </div>
+      )}
     </>
     </LangContext.Provider>
     </ThemeContext.Provider>
