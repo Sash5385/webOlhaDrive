@@ -1,12 +1,12 @@
 {
   "projects": {
-    "default": "olhadrive-booking"
+    "default": "id4drive-booking-44182"
   },
   "targets": {
-    "olhadrive-booking": {
+    "id4drive-booking-44182": {
       "hosting": {
         "admin": [
-          "olhadrive-admin"
+          "id4drive-admin"
         ]
       }
     }

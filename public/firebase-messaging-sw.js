@@ -5,19 +5,19 @@ self.addEventListener('install', () => self.skipWaiting())
 self.addEventListener('activate', () => self.clients.claim())
 
 firebase.initializeApp({
-  apiKey: "AIzaSyCkkR95_vT4sYJBxwPeDT4bfkO-E7PVXe0",
-  authDomain: "olhadrive-booking.firebaseapp.com",
-  databaseURL: "https://olhadrive-booking-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "olhadrive-booking",
-  storageBucket: "olhadrive-booking.firebasestorage.app",
-  messagingSenderId: "956727837484",
-  appId: "1:956727837484:web:3ca5f08dbeaa6368b02289"
+  apiKey: "AIzaSyDO6-LTuBoNHi6uS5KcOpmBuyvgJSouYpk",
+  authDomain: "id4drive-booking-44182.firebaseapp.com",
+  databaseURL: "https://id4drive-booking-44182-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "id4drive-booking-44182",
+  storageBucket: "id4drive-booking-44182.firebasestorage.app",
+  messagingSenderId: "815176240686",
+  appId: "1:815176240686:web:1cf54d6c465420230199bf"
 })
 
 const messaging = firebase.messaging()
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'OlhaDrive'
+  const title = payload.notification?.title || 'ID4Drive'
   const options = {
     body: payload.notification?.body || '',
     icon: '/favicon.svg',

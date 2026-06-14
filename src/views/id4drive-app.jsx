@@ -1,18 +1,16 @@
-import React, { useState, lazy, Suspense } from "react";
+﻿import React, { useState, lazy, Suspense } from "react";
 
-// ─── LAZY VIEWS
-const ScheduleView  = lazy(()=>import("./views/olhadrive-admin-v5").then(m=>({default:m.ScheduleView})))
-const SettingsView  = lazy(()=>import("./views/olhadrive-admin-v5").then(m=>({default:m.SettingsView})))
-const BookingsView  = lazy(()=>import("./views/olhadrive-bookings"))
-const StudentsView  = lazy(()=>import("./views/olhadrive-students"))
-const ServicesView  = lazy(()=>import("./views/olhadrive-services"))
-const ChatsView     = lazy(()=>import("./views/olhadrive-chats"))
-const TemplatesView = lazy(()=>import("./views/olhadrive-templates"))
-const StatsView     = lazy(()=>import("./views/olhadrive-stats"))
+// в”Ђв”Ђв”Ђ LAZY VIEWS
+const ScheduleView  = lazy(()=>import("./id4drive-admin-v5").then(m=>({default:m.ScheduleView})))
+const SettingsView  = lazy(()=>import("./id4drive-admin-v5").then(m=>({default:m.SettingsView})))
+const BookingsView  = lazy(()=>import("./id4drive-bookings"))
+const StudentsView  = lazy(()=>import("./id4drive-students"))
+const ServicesView  = lazy(()=>import("./id4drive-services"))
+const ChatsView     = lazy(()=>import("./id4drive-chats"))
+const TemplatesView = lazy(()=>import("./id4drive-templates"))
+const StatsView     = lazy(()=>import("./id4drive-stats"))
 
-const Loader = () => <div style={{color: "white", padding: "20px"}}>Завантаження...</div>;
-
-// ─── TOKENS ─────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ TOKENS в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const BG      = "#1c1d21";
 const BG_DEEP = "#161719";
 const SURFACE = "#26282c";
@@ -30,7 +28,7 @@ const GOLD    = "#f7c948";
 
 const SO = "6px 6px 16px rgba(0,0,0,0.45),-3px -3px 10px rgba(255,255,255,0.025)";
 
-// ─── CSS ────────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ CSS в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const CSS = `
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body,html{margin:0;padding:0;background:${BG}}
@@ -42,15 +40,15 @@ body,html{margin:0;padding:0;background:${BG}}
 .tab-anim{animation:fade-tab .22s ease both}
 `;
 
-// ─── INLINE VIEWS (schedule + settings already in v5 — rebuilt here compactly) ──
-// Кожна вкладка — окремий компонент нижче або lazy-loaded
+// в”Ђв”Ђв”Ђ INLINE VIEWS (schedule + settings already in v5 вЂ” rebuilt here compactly) в”Ђв”Ђ
+// РљРѕР¶РЅР° РІРєР»Р°РґРєР° вЂ” РѕРєСЂРµРјРёР№ РєРѕРјРїРѕРЅРµРЅС‚ РЅРёР¶С‡Рµ Р°Р±Рѕ lazy-loaded
 
-// ─── LAZY VIEWS ─────────────────────────────────────────────────
-// У реальному проекті це були б:
-// const BookingsView  = lazy(()=>import("./olhadrive-bookings"));
-// Тут — inline заглушки з повідомленням, бо всі компоненти в окремих файлах
+// в”Ђв”Ђв”Ђ LAZY VIEWS в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// РЈ СЂРµР°Р»СЊРЅРѕРјСѓ РїСЂРѕРµРєС‚С– С†Рµ Р±СѓР»Рё Р±:
+// const BookingsView  = lazy(()=>import("./id4drive-bookings"));
+// РўСѓС‚ вЂ” inline Р·Р°РіР»СѓС€РєРё Р· РїРѕРІС–РґРѕРјР»РµРЅРЅСЏРј, Р±Рѕ РІСЃС– РєРѕРјРїРѕРЅРµРЅС‚Рё РІ РѕРєСЂРµРјРёС… С„Р°Р№Р»Р°С…
 
-// ─── ICONS (3D pillow) ───────────────────────────────────────────
+// в”Ђв”Ђв”Ђ ICONS (3D pillow) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const I3 = ({children,gr,s=36,r=12})=>(
   <div style={{
     width:s,height:s,borderRadius:r,background:gr,
@@ -90,26 +88,26 @@ const TabIcons = {
   </I3>,
 };
 
-// ─── TABS CONFIG ─────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ TABS CONFIG в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 const TABS = [
-  { id:"schedule",  label:"Записи",   badge:null },
-  { id:"bookings",  label:"Букінги",  badge:3    },
-  { id:"students",  label:"Учні",     badge:null },
-  { id:"services",  label:"Послуги",  badge:null },
-  { id:"chats",     label:"Чати",     badge:8    },
-  { id:"templates", label:"Шаблони",  badge:null },
-  { id:"stats",     label:"Статист.", badge:null },
-  { id:"settings",  label:"Налашт.",  badge:null },
+  { id:"schedule",  label:"Р—Р°РїРёСЃРё",   badge:null },
+  { id:"bookings",  label:"Р‘СѓРєС–РЅРіРё",  badge:3    },
+  { id:"students",  label:"РЈС‡РЅС–",     badge:null },
+  { id:"services",  label:"РџРѕСЃР»СѓРіРё",  badge:null },
+  { id:"chats",     label:"Р§Р°С‚Рё",     badge:8    },
+  { id:"templates", label:"РЁР°Р±Р»РѕРЅРё",  badge:null },
+  { id:"stats",     label:"РЎС‚Р°С‚РёСЃС‚.", badge:null },
+  { id:"settings",  label:"РќР°Р»Р°С€С‚.",  badge:null },
 ];
 
 const TAB_TITLES = {
-  schedule:"Розклад", bookings:"Букінги", students:"Учні",
-  services:"Послуги", chats:"Чати", templates:"Шаблони",
-  stats:"Статистика", settings:"Налаштування"
+  schedule:"Р РѕР·РєР»Р°Рґ", bookings:"Р‘СѓРєС–РЅРіРё", students:"РЈС‡РЅС–",
+  services:"РџРѕСЃР»СѓРіРё", chats:"Р§Р°С‚Рё", templates:"РЁР°Р±Р»РѕРЅРё",
+  stats:"РЎС‚Р°С‚РёСЃС‚РёРєР°", settings:"РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ"
 };
 
 
-// ─── PLACEHOLDER (поки не підключено) ────────────────────────────
+// в”Ђв”Ђв”Ђ PLACEHOLDER (РїРѕРєРё РЅРµ РїС–РґРєР»СЋС‡РµРЅРѕ) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function Placeholder({ tab, file }) {
   return (
     <div style={{
@@ -122,7 +120,7 @@ function Placeholder({ tab, file }) {
       {TabIcons[tab]?.(64,true)}
       <div style={{textAlign:"center"}}>
         <div style={{fontSize:16,fontWeight:800,color:TEXT,marginBottom:6}}>{TAB_TITLES[tab]}</div>
-        <div style={{fontSize:12,color:DIM,marginBottom:12}}>Компонент підключається з файлу:</div>
+        <div style={{fontSize:12,color:DIM,marginBottom:12}}>РљРѕРјРїРѕРЅРµРЅС‚ РїС–РґРєР»СЋС‡Р°С”С‚СЊСЃСЏ Р· С„Р°Р№Р»Сѓ:</div>
         <div style={{
           fontSize:12,color:ACCENT,fontWeight:700,
           background:"rgba(255,90,60,0.1)",padding:"6px 14px",borderRadius:10,
@@ -130,22 +128,22 @@ function Placeholder({ tab, file }) {
         }}>{file}</div>
       </div>
       <div style={{fontSize:11,color:FAINT,textAlign:"center",maxWidth:280}}>
-        У production-версії тут рендериться повний компонент через lazy import
+        РЈ production-РІРµСЂСЃС–С— С‚СѓС‚ СЂРµРЅРґРµСЂРёС‚СЊСЃСЏ РїРѕРІРЅРёР№ РєРѕРјРїРѕРЅРµРЅС‚ С‡РµСЂРµР· lazy import
       </div>
     </div>
   );
 }
 
-// ─── SCHEDULE MINI (вбудована заглушка з інфо) ───────────────────
+// в”Ђв”Ђв”Ђ SCHEDULE MINI (РІР±СѓРґРѕРІР°РЅР° Р·Р°РіР»СѓС€РєР° Р· С–РЅС„Рѕ) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function ScheduleInfo() {
   const files = [
-    { file:"olhadrive-admin-v5.jsx",    comp:"ScheduleView + SettingsView", lines:1304 },
-    { file:"olhadrive-bookings.jsx",    comp:"BookingsView",                lines:703  },
-    { file:"olhadrive-students.jsx",    comp:"StudentsView",                lines:683  },
-    { file:"olhadrive-services.jsx",    comp:"ServicesView",                lines:612  },
-    { file:"olhadrive-chats.jsx",       comp:"ChatsView",                   lines:647  },
-    { file:"olhadrive-templates.jsx",   comp:"TemplatesView",               lines:597  },
-    { file:"olhadrive-stats.jsx",       comp:"StatsView",                   lines:462  },
+    { file:"id4drive-admin-v5.jsx",    comp:"ScheduleView + SettingsView", lines:1304 },
+    { file:"id4drive-bookings.jsx",    comp:"BookingsView",                lines:703  },
+    { file:"id4drive-students.jsx",    comp:"StudentsView",                lines:683  },
+    { file:"id4drive-services.jsx",    comp:"ServicesView",                lines:612  },
+    { file:"id4drive-chats.jsx",       comp:"ChatsView",                   lines:647  },
+    { file:"id4drive-templates.jsx",   comp:"TemplatesView",               lines:597  },
+    { file:"id4drive-stats.jsx",       comp:"StatsView",                   lines:462  },
   ];
   const totalLines = files.reduce((s,f)=>s+f.lines,0);
 
@@ -160,18 +158,18 @@ function ScheduleInfo() {
       }}>
         <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
           <I3 s={52} r={16} gr="linear-gradient(165deg,#ff7a5c,#ff5a3c)">
-            <span style={{fontSize:26,position:"relative",zIndex:1}}>🚗</span>
+            <span style={{fontSize:26,position:"relative",zIndex:1}}>рџљ—</span>
           </I3>
           <div>
-            <div style={{fontSize:20,fontWeight:900,color:TEXT,letterSpacing:-0.5}}>OlhaDrive Admin</div>
-            <div style={{fontSize:12,color:DIM,marginTop:2}}>Панель управління інструктора</div>
+            <div style={{fontSize:20,fontWeight:900,color:TEXT,letterSpacing:-0.5}}>ID4Drive Admin</div>
+            <div style={{fontSize:12,color:DIM,marginTop:2}}>РџР°РЅРµР»СЊ СѓРїСЂР°РІР»С–РЅРЅСЏ С–РЅСЃС‚СЂСѓРєС‚РѕСЂР°</div>
           </div>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
           {[
-            {label:"Файлів",    val:files.length,        c:BLUE},
-            {label:"Рядків",    val:totalLines,          c:GOLD},
-            {label:"Вкладок",   val:8,                   c:ACCENT},
+            {label:"Р¤Р°Р№Р»С–РІ",    val:files.length,        c:BLUE},
+            {label:"Р СЏРґРєС–РІ",    val:totalLines,          c:GOLD},
+            {label:"Р’РєР»Р°РґРѕРє",   val:8,                   c:ACCENT},
           ].map(s=>(
             <div key={s.label} style={{
               background:`linear-gradient(135deg,${BG_DEEP},${SURF_LO})`,
@@ -191,7 +189,7 @@ function ScheduleInfo() {
         borderRadius:20,padding:"16px",boxShadow:SO,
         border:`1px solid ${BORDER}`
       }}>
-        <div style={{fontSize:10,color:FAINT,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Структура проекту</div>
+        <div style={{fontSize:10,color:FAINT,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>РЎС‚СЂСѓРєС‚СѓСЂР° РїСЂРѕРµРєС‚Сѓ</div>
         {files.map((f,i)=>(
           <div key={i} style={{
             display:"flex",alignItems:"center",gap:10,
@@ -207,7 +205,7 @@ function ScheduleInfo() {
             <div style={{
               fontSize:10,color:FAINT,fontWeight:700,
               background:`${SURF_HI}`,padding:"2px 8px",borderRadius:8,flexShrink:0
-            }}>{f.lines} рядк.</div>
+            }}>{f.lines} СЂСЏРґРє.</div>
           </div>
         ))}
       </div>
@@ -218,13 +216,13 @@ function ScheduleInfo() {
         borderRadius:20,padding:"16px",boxShadow:SO,
         border:`1px solid ${BORDER}`
       }}>
-        <div style={{fontSize:10,color:FAINT,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>Як підключити</div>
+        <div style={{fontSize:10,color:FAINT,letterSpacing:1.5,textTransform:"uppercase",marginBottom:12}}>РЇРє РїС–РґРєР»СЋС‡РёС‚Рё</div>
         {[
-          "1. Завантаж всі .jsx файли в папку /src/views/",
-          "2. В App.jsx зроби lazy import кожного компонента",
-          "3. Передай спільні settings та setSettings через props або Context",
-          "4. Підключи Firebase — замість mock data використай реальні запити",
-          "5. Задеплой на Vercel або Firebase Hosting",
+          "1. Р—Р°РІР°РЅС‚Р°Р¶ РІСЃС– .jsx С„Р°Р№Р»Рё РІ РїР°РїРєСѓ /src/views/",
+          "2. Р’ App.jsx Р·СЂРѕР±Рё lazy import РєРѕР¶РЅРѕРіРѕ РєРѕРјРїРѕРЅРµРЅС‚Р°",
+          "3. РџРµСЂРµРґР°Р№ СЃРїС–Р»СЊРЅС– settings С‚Р° setSettings С‡РµСЂРµР· props Р°Р±Рѕ Context",
+          "4. РџС–РґРєР»СЋС‡Рё Firebase вЂ” Р·Р°РјС–СЃС‚СЊ mock data РІРёРєРѕСЂРёСЃС‚Р°Р№ СЂРµР°Р»СЊРЅС– Р·Р°РїРёС‚Рё",
+          "5. Р—Р°РґРµРїР»РѕР№ РЅР° Vercel Р°Р±Рѕ Firebase Hosting",
         ].map((s,i)=>(
           <div key={i} style={{
             fontSize:12,color:DIM,padding:"8px 12px",marginBottom:4,
@@ -237,7 +235,7 @@ function ScheduleInfo() {
   );
 }
 
-// ─── BOTTOM NAV ──────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ BOTTOM NAV в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function BottomNav({ active, onChange }) {
   return (
     <div style={{
@@ -284,7 +282,7 @@ function BottomNav({ active, onChange }) {
   );
 }
 
-// ─── TOP BAR ─────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ TOP BAR в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function TopBar({ tab }) {
   return (
     <div style={{
@@ -297,7 +295,7 @@ function TopBar({ tab }) {
     }}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <I3 s={34} r={10} gr="linear-gradient(165deg,#ff7a5c,#ff5a3c)">
-          <span style={{fontSize:18,position:"relative",zIndex:1}}>🚗</span>
+          <span style={{fontSize:18,position:"relative",zIndex:1}}>рџљ—</span>
         </I3>
         <div style={{fontSize:17,fontWeight:800,letterSpacing:-0.3,color:TEXT}}>{TAB_TITLES[tab]}</div>
       </div>
@@ -322,40 +320,41 @@ function TopBar({ tab }) {
             display:"flex",alignItems:"center",justifyContent:"center",
             fontSize:13,fontWeight:800,color:"#fff",
             boxShadow:"-2px 3px 8px rgba(0,0,0,0.4),inset 1px 1px 0 rgba(255,255,255,0.2)"
-          }}>ОЛ</div>
+          }}>РћР›</div>
         </button>
       </div>
     </div>
   );
 }
 
-const INITIAL_BOOKINGS = [];
+const INITIAL_BOOKINGS = [
+  { id:"b1",  day:0, startMin:8*60,  durMin:120, name:"РњР°СЂС–СЏ РљРѕРІР°Р»СЊ",   phone:"+380671234567", type:"school",  tsc:"РўРЎР¦ РћР±РѕР»РѕРЅСЊ",    hoursDone:12, status:"confirmed", serviceId:"sv1" },
+  { id:"b2",  day:0, startMin:11*60, durMin:60,  name:"Р†РІР°РЅ РџРµС‚СЂРµРЅРєРѕ",  phone:"+380509876543", type:"private", tsc:"",               hoursDone:5,  status:"pending",   serviceId:"sv3" },
+  { id:"b3",  day:0, startMin:14*60, durMin:120, name:"РћР»РµРЅР° РњРѕСЂРѕР·",    phone:"+380631112233", type:"school",  tsc:"РўРЎР¦ Р”Р°СЂРЅРёС†СЏ",   hoursDone:38, status:"confirmed", serviceId:"sv1" },
+  { id:"b4",  day:1, startMin:9*60,  durMin:60,  name:"Р”РјРёС‚СЂРѕ РЎР°Р»Рѕ",    phone:"+380961234567", type:"private", tsc:"",               hoursDone:9,  status:"confirmed", serviceId:"sv3" },
+  { id:"b5",  day:1, startMin:13*60, durMin:60,  name:"РўРµС‚СЏРЅР° РљСЂР°РІРµС†СЊ", phone:"+380731234567", type:"school",  tsc:"РўРЎР¦ РћР±РѕР»РѕРЅСЊ",    hoursDone:40, status:"confirmed", serviceId:"sv1" },
+  { id:"b6",  day:2, startMin:10*60, durMin:120, name:"РђРЅС‚РѕРЅ Р‘С–Р»РёР№",    phone:"+380501112233", type:"school",  tsc:"РўРЎР¦ Р›С–РІРѕР±РµСЂРµР¶РЅР°",hoursDone:22, status:"confirmed", serviceId:"sv1" },
+  { id:"b7",  day:2, startMin:15*60, durMin:120, name:"Р®Р»С–СЏ Р”РµРЅРёСЃСЋРє",   phone:"+380935023739", type:"private", tsc:"",               hoursDone:3,  status:"pending",   serviceId:"sv4" },
+  { id:"b8",  day:3, startMin:8*60,  durMin:60,  name:"РЎРµСЂРіС–Р№ Р“СѓРє",     phone:"+380961234500", type:"private", tsc:"",               hoursDone:14, status:"confirmed", serviceId:"sv3" },
+  { id:"b9",  day:3, startMin:11*60, durMin:120, name:"РќР°С‚Р°Р»С–СЏ Р‘РѕРЅРґР°СЂ", phone:"+380671112244", type:"school",  tsc:"РўРЎР¦ Р”Р°СЂРЅРёС†СЏ",   hoursDone:18, status:"confirmed", serviceId:"sv1" },
+  { id:"b10", day:4, startMin:9*60,  durMin:120, name:"РђРЅРґСЂС–Р№ Р§РѕСЂРЅРёР№",  phone:"+380501234500", type:"school",  tsc:"РўРЎР¦ РћР±РѕР»РѕРЅСЊ",    hoursDone:30, status:"confirmed", serviceId:"sv1" },
+  { id:"b11", day:4, startMin:14*60, durMin:60,  name:"Р†СЂРёРЅР° Р›РµСЃРЅРёРє",   phone:"+380967240853", type:"private", tsc:"",               hoursDone:1,  status:"pending",   serviceId:"sv3" },
+  { id:"b12", day:5, startMin:10*60, durMin:120, name:"РђРЅРіРµР»С–РЅР° РљРѕРЅРёРє", phone:"+380681746071", type:"private", tsc:"",               hoursDone:6,  status:"confirmed", serviceId:"sv4" },
+];
 
 const DEFAULT_SETTINGS = {
-  profile: { name:"Олександр", phone:"+380989225442", address:"Київ", experience:8, photo:null },
+  profile: { name:"РћР»РµРєСЃР°РЅРґСЂ", phone:"+380989225442", address:"РљРёС—РІ", experience:8, photo:null },
   workStart:7, workEnd:20, weekends:[6], daysShown:7, snapMin:30, hourHeightPx:60,
   lunchEnabled:true, lunchStart:12, lunchEnd:13, customBlocks:[], pendingEnabled:false,
   theme:"dark", language:"uk", queueAutoFifo:true, queueBroadcast:false, queueManual:false,
   studentCanReschedule:true, studentCanCancel:true, bookCutoffHours:2, calendarOpenDays:30,
   stickyTime:"both", notifLocation:"topbar",
-  autoReminder:{enabled:true, hoursBefore:24}, autoWelcome:{enabled:true}, autoConfirm:{enabled:true},
-  services: [
-    { id:"sv1", name:"Автошкола 1 год", type:"school",  duration:60,  price:600,  colorId:"green",  active:true,  description:"Урок з автошколи" },
-    { id:"sv2", name:"Автошкола 2 год", type:"school",  duration:120, price:1100, colorId:"green",  active:true,  description:"" },
-    { id:"sv3", name:"Приватний 1 год", type:"private", duration:60,  price:700,  colorId:"yellow", active:true,  description:"" },
-    { id:"sv4", name:"Приватний 2 год", type:"private", duration:120, price:1300, colorId:"yellow", active:true,  description:"" },
-  ],
-  categories: [
-    { id:"cat-vip", name:"VIP",      colorId:"purple" },
-    { id:"cat-std", name:"Стандарт", colorId:"blue" },
-    { id:"cat-new", name:"Новачок",  colorId:"teal" },
-  ],
-};
+  autoReminder:{enabled:true, hoursBefore:24}, autoWelcome:{enabled:true}, autoConfirm:{enabled:true}, autoCancel:{enabled:true}, autoQueueOffer:{enabled:true},;
 
-// ─── VIEW RENDERER ───────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ VIEW RENDERER в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 function ViewRenderer({ tab, settings, setSettings, bookings, setBookings }) {
   if (tab === "schedule")  return <ScheduleView settings={settings} setSettings={setSettings} bookings={bookings} setBookings={setBookings}/>;
-  if (tab === "settings")  return <SettingsView settings={settings} setSettings={setSettings}/>;
+  if (tab === "settings")  return <SettingsView/>;
   if (tab === "bookings")  return <BookingsView/>;
   if (tab === "students")  return <StudentsView/>;
   if (tab === "services")  return <ServicesView/>;
@@ -365,11 +364,30 @@ function ViewRenderer({ tab, settings, setSettings, bookings, setBookings }) {
   return null;
 }
 
-// ─── MAIN APP ────────────────────────────────────────────────────
+// в”Ђв”Ђв”Ђ MAIN APP в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 export default function App() {
-  const [tab, setTab] = useState("schedule");
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
-  const [bookings, setBookings] = useState(INITIAL_BOOKINGS);
+const [settings, setSettings] = useState({
+  profile:{ name:"Олександр", phone:"+380989225442", address:"Київ, Верховинна 44", experience:8 },
+  workStart:7, workEnd:20, weekends:[6], daysShown:7, snapMin:30, hourHeightPx:60,
+  lunchEnabled:true, lunchStart:12, lunchEnd:13,
+  pendingEnabled:false, theme:"dark", language:"uk",
+  queueAutoFifo:true, queueBroadcast:false, queueManual:false,
+  studentCanReschedule:true, studentCanCancel:true, bookCutoffHours:2, calendarOpenDays:30,
+  stickyTime:"both", notifLocation:"topbar",
+  autoConfirm:{enabled:true}, autoCancel:{enabled:true}, autoQueueOffer:{enabled:true},
+  services:[
+    {id:"sv1",name:"Автошкола 1 год",type:"school",duration:60,price:600,colorId:"green",active:true,description:""},
+    {id:"sv2",name:"Автошкола 2 год",type:"school",duration:120,price:1100,colorId:"green",active:true,description:""},
+    {id:"sv3",name:"Приватний 1 год",type:"private",duration:60,price:700,colorId:"yellow",active:true,description:""},
+    {id:"sv4",name:"Приватний 2 год",type:"private",duration:120,price:1300,colorId:"yellow",active:true,description:""},
+  ],
+  categories:[
+    {id:"cat-vip",name:"VIP",colorId:"purple"},
+    {id:"cat-std",name:"Стандарт",colorId:"blue"},
+    {id:"cat-new",name:"Новачок",colorId:"teal"},
+  ],
+});
+    const [bookings, setBookings] = useState([]);
 
   return (
     <>
@@ -390,3 +408,9 @@ export default function App() {
     </>
   );
 }
+
+
+
+
+
+

@@ -4,18 +4,8 @@ import { db } from "../firebase";
 import { LangContext } from "../App";
 import { createT } from "../lang";
 
-import { BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, SO, SI } from "../theme.js";
-
-const CSS = `
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px}
-@keyframes bar-grow{from{height:0%}to{height:var(--h)}}
-@keyframes line-draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
-.line-anim{animation:line-draw 1s ease both}
-@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-.fu{animation:fade-up .2s ease both}
-`;
+import { ThemeContext } from "../theme.js";
+import { UICss, Card, useFX } from "../ui";
 
 const UK_MONTHS     = ["Січ","Лют","Бер","Кві","Тра","Чер","Лип","Сер","Вер","Жов","Лис","Гру"];
 const UK_WEEK_LABELS= ["Пн","Вт","Ср","Чт","Пт","Сб"];
@@ -114,22 +104,18 @@ function trendPct(cur, prev) {
   return Math.round(((cur - prev) / prev) * 100);
 }
 
-// ─── UI COMPONENTS ──────────────────────────────────────────────
-const Card = ({children, style={}}) => (
-  <div className="fu" style={{
-    background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,
-    borderRadius:13, overflow:"hidden",
-    boxShadow:`0 2px 8px rgba(0,0,0,.35),0 0 0 1px ${BORDER}`,
-    ...style,
-  }}>{children}</div>
-);
-
-const Inset = ({children, style={}}) => (
-  <div style={{background:BG_DEEP, borderRadius:10, boxShadow:SI, ...style}}>{children}</div>
-);
+// ─── INSET (border-free chart backdrop) ─────────────────────────
+const Inset = ({children, style={}}) => {
+  const { BG_DEEP, SI } = useContext(ThemeContext);
+  return (
+    <div style={{background:BG_DEEP, borderRadius:10, boxShadow:SI, ...style}}>{children}</div>
+  );
+};
 
 // ─── SVG LINE CHART ──────────────────────────────────────────────
 function LineChart({ data, valueKey, color, height=120 }) {
+  const { FAINT } = useContext(ThemeContext);
+  const { ink } = useFX();
   const W=320, H=height, P=12;
   const vals = data.map(d => d[valueKey]);
   const max = Math.max(...vals), min = Math.min(...vals);
@@ -151,7 +137,7 @@ function LineChart({ data, valueKey, color, height=120 }) {
         </linearGradient>
       </defs>
       {[0,.25,.5,.75,1].map(t=>(
-        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke={ink(0.06)} strokeWidth="1"/>
       ))}
       <path d={area} fill={`url(#${gid})`}/>
       <path className="line-anim" d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -168,6 +154,8 @@ function LineChart({ data, valueKey, color, height=120 }) {
 
 // ─── SVG BAR CHART ───────────────────────────────────────────────
 function BarChart({ data, valueKey, color, height=120 }) {
+  const { FAINT } = useContext(ThemeContext);
+  const { ink } = useFX();
   const W=320, H=height, P=12;
   const vals = data.map(d => d[valueKey]);
   const max  = Math.max(...vals) || 1;
@@ -184,7 +172,7 @@ function BarChart({ data, valueKey, color, height=120 }) {
         ))}
       </defs>
       {[0,.5,1].map(t=>(
-        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke={ink(0.06)} strokeWidth="1"/>
       ))}
       {data.map((d, i) => {
         const bH = ((d[valueKey]||0) / max) * (H - P*2 - 10);
@@ -204,11 +192,12 @@ function BarChart({ data, valueKey, color, height=120 }) {
 
 // ─── DONUT ───────────────────────────────────────────────────────
 function Donut({ school, total, size=76 }) {
+  const { SURF_LO, GREEN, GOLD, TEXT } = useContext(ThemeContext);
   const pct = total ? school/total : 0;
   const r=26, cx=size/2, cy=size/2, c=2*Math.PI*r;
   return (
     <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={SURF_HI} strokeWidth="9"/>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={SURF_LO} strokeWidth="9"/>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={GREEN} strokeWidth="9"
         strokeDasharray={`${pct*c} ${c}`} strokeDashoffset={c*.25} strokeLinecap="round"
         style={{filter:`drop-shadow(0 0 5px ${GREEN}66)`}}/>
@@ -220,23 +209,35 @@ function Donut({ school, total, size=76 }) {
   );
 }
 
-// ─── CHIP ────────────────────────────────────────────────────────
-const Chip = ({label, active, onClick, color}) => (
-  <button onClick={onClick} style={{
-    padding:"6px 12px", borderRadius:9, border:"none", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0,
-    background: active ? `linear-gradient(145deg,${color||ACC_HI},${color?color+"bb":ACCENT})` : `linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-    color: active ? "#fff" : DIM, boxShadow: active ? "none" : SO,
-  }}>{label}</button>
-);
+// ─── CHIP (period segmented) ─────────────────────────────────────
+const Chip = ({label, active, onClick, color}) => {
+  const { ACC_HI, ACCENT, SURF_HI, SURFACE, DIM, SO } = useContext(ThemeContext);
+  return (
+    <button onClick={onClick} style={{
+      padding:"6px 12px", borderRadius:9, border:"none", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"inherit",
+      background: active ? `linear-gradient(145deg,${color||ACC_HI},${color?color+"bb":ACCENT})` : `linear-gradient(145deg,${SURF_HI},${SURFACE})`,
+      color: active ? "#fff" : DIM, boxShadow: active ? "none" : SO,
+    }}>{label}</button>
+  );
+};
 
 // ─── MAIN ────────────────────────────────────────────────────────
 export default function StatsView() {
+  const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, SO, SI } = useContext(ThemeContext);
   const lang = useContext(LangContext);
   const t = createT(lang);
   const [period,    setPeriod]    = useState("month");
   const [chartType, setChartType] = useState("line");
   const [metric,    setMetric]    = useState("income");
   const [bookings,  setBookings]  = useState([]);
+
+  const css = `
+@keyframes bar-grow{from{height:0%}to{height:var(--h)}}
+@keyframes line-draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
+.line-anim{animation:line-draw 1s ease both}
+@keyframes fade-up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fu{animation:fade-up .2s ease both}
+`;
 
   useEffect(() => {
     return onValue(ref(db, "bookings"), snap => {
@@ -293,7 +294,8 @@ export default function StatsView() {
 
   return (
     <>
-      <style>{CSS}</style>
+      <UICss/>
+      <style>{css}</style>
       <div style={{display:"flex",flexDirection:"column",gap:8,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
         {/* ── PERIOD ── */}
@@ -311,14 +313,14 @@ export default function StatsView() {
             {label:"Серед. чек", value:fmtK(avgCheck),      sub:"дохід / урок",             color:GREEN, trend:trendPct(avgCheck, prevAvgCheck)},
             {label:"No-show",    value:`${noshowPct}%`,     sub:`скасувань: ${totalCancel}`, color:noshowPct>5?RED:DIM, trend:trendPct(cur.noshow, prev.noshow) * -1},
           ].map((k, i) => (
-            <Card key={i} style={{padding:"12px 13px"}}>
+            <Card key={i} className="fu" style={{padding:"12px 13px"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
                 <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700}}>{k.label}</div>
                 {k.trend !== 0 && (
                   <span style={{
                     fontSize:9, fontWeight:800, padding:"2px 6px", borderRadius:6,
                     color:k.trend>=0?GREEN:RED,
-                    background:k.trend>=0?"rgba(126,217,87,0.12)":"rgba(239,68,68,0.12)",
+                    background:k.trend>=0?`${GREEN}1f`:`${RED}1f`,
                   }}>{k.trend>=0?"+":""}{k.trend}%</span>
                 )}
               </div>
@@ -329,19 +331,19 @@ export default function StatsView() {
         </div>
 
         {/* ── CHART ── */}
-        <Card style={{padding:"14px"}}>
+        <Card className="fu" style={{padding:"14px"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:6}}>
             <span style={{fontSize:13,fontWeight:800,color:TEXT}}>Динаміка</span>
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
               {METRICS.map(m=>(
                 <button key={m.id} onClick={()=>setMetric(m.id)} style={{
-                  padding:"4px 8px", borderRadius:7, border:"none", cursor:"pointer", fontSize:10, fontWeight:700,
+                  padding:"4px 8px", borderRadius:7, border:"none", cursor:"pointer", fontSize:10, fontWeight:700, fontFamily:"inherit",
                   background:metric===m.id?`${m.color}22`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
                   color:metric===m.id?m.color:FAINT, boxShadow:SO,
                 }}>{m.label}</button>
               ))}
               <button onClick={()=>setChartType(t=>t==="line"?"bar":"line")} style={{
-                padding:"4px 10px", borderRadius:7, border:"none", cursor:"pointer", fontSize:11,
+                padding:"4px 10px", borderRadius:7, border:"none", cursor:"pointer", fontSize:11, fontFamily:"inherit",
                 background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`, color:DIM, boxShadow:SO,
               }}>{chartType==="line"?"📊":"📈"}</button>
             </div>
@@ -369,7 +371,7 @@ export default function StatsView() {
         {/* ── РОЗПОДІЛ + ЗАВАНТАЖЕННЯ ── */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
 
-          <Card style={{padding:"12px"}}>
+          <Card className="fu" style={{padding:"12px"}}>
             <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:9}}>Розподіл</div>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               <Donut school={totalSchool} total={totalSchool+totalPrivate}/>
@@ -385,7 +387,7 @@ export default function StatsView() {
             </div>
           </Card>
 
-          <Card style={{padding:"12px"}}>
+          <Card className="fu" style={{padding:"12px"}}>
             <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:9}}>По днях</div>
             {weekData.map((d, i) => {
               const maxI = Math.max(...weekData.map(x => x.income), 1);
@@ -405,7 +407,7 @@ export default function StatsView() {
 
         {/* ── ТОП-5 ── */}
         {topStudents.length > 0 && (
-          <Card style={{padding:"12px 13px 8px"}}>
+          <Card className="fu" style={{padding:"12px 13px 8px"}}>
             <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:10}}>Топ-5 учнів</div>
             {topStudents.map((s, i) => {
               const maxH = topStudents[0].paid;
@@ -448,7 +450,7 @@ export default function StatsView() {
         )}
 
         {/* ── ЕКСПОРТ ── */}
-        <Card style={{padding:"12px"}}>
+        <Card className="fu" style={{padding:"12px"}}>
           <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:10}}>Експорт</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
             {[
@@ -457,7 +459,7 @@ export default function StatsView() {
               {label:"Share", emoji:"↗️", color:BLUE,  sub:"Поділитись"},
             ].map(e=>(
               <button key={e.label} style={{
-                padding:"11px 6px", borderRadius:11, border:"none", cursor:"pointer",
+                padding:"11px 6px", borderRadius:11, border:"none", cursor:"pointer", fontFamily:"inherit",
                 background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
                 display:"flex", flexDirection:"column", alignItems:"center", gap:5, boxShadow:SO,
               }}>

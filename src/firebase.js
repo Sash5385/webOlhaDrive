@@ -4,16 +4,16 @@ import { getDatabase, ref, set } from "firebase/database";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCkkR95_vT4sYJBxwPeDT4bfkO-E7PVXe0",
-  authDomain: "olhadrive-booking.firebaseapp.com",
-  databaseURL: "https://olhadrive-booking-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "olhadrive-booking",
-  storageBucket: "olhadrive-booking.firebasestorage.app",
-  messagingSenderId: "956727837484",
-  appId: "1:956727837484:web:3ca5f08dbeaa6368b02289"
+  apiKey: "AIzaSyDO6-LTuBoNHi6uS5KcOpmBuyvgJSouYpk",
+  authDomain: "id4drive-booking-44182.firebaseapp.com",
+  databaseURL: "https://id4drive-booking-44182-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "id4drive-booking-44182",
+  storageBucket: "id4drive-booking-44182.firebasestorage.app",
+  messagingSenderId: "815176240686",
+  appId: "1:815176240686:web:1cf54d6c465420230199bf"
 };
 
-const VAPID_KEY = "BJzB84MYVCjYxFGRJa1t2hTyMjlyYhCfDBz_wgD8VCX84rUA1ircVYMkCEe8gYrKkceaM6Mweup8AW9DoFUyncY";
+const VAPID_KEY = "BFT1t7hXhEcSsHdotLlG5xoIFNrdS11vU_jsHiD1UUMsskVINBW2het8ogOKioGTPK8X_-u1ivEQM0n0Dh6Zvqk";
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);

@@ -1,5 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onValueUpdated, onValueWritten } = require("firebase-functions/v2/database");
+const { onValueCreated, onValueUpdated, onValueWritten } = require("firebase-functions/v2/database");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -20,7 +20,7 @@ async function pushStudent(uid, title, body, data = {}) {
   const snap = await db.ref(`users/${uid}/fcmTokens/web/token`).get();
   const token = snap.val();
   if (!token) return;
-  const link = data.url || "https://olhadrive.kiev.ua/cabinet";
+  const link = data.url || "https://id4drive.pro/cabinet";
   await admin.messaging().send({
     token,
     notification: { title, body },
@@ -58,7 +58,7 @@ async function pushAdmin(title, body) {
       notification: { title, body },
       webpush: {
         notification: { icon: "/favicon.svg" },
-        fcmOptions: { link: "https://admin.olhadrive.kiev.ua" },
+        fcmOptions: { link: "https://admin.id4drive.pro" },
       },
     });
     console.log(`pushAdmin OK: ${title} messageId=${result}`);
@@ -122,7 +122,15 @@ exports.onBookingChanged = onValueWritten(
     if (before === null && after) {
       const slotUpd = buildSlotUpdates(after, false);
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
-      if (after.cancelledBy !== "admin") {
+      if (after.createdBy === "admin" && uid !== "admin") {
+        // Адмін вручну записав учня — сповіщаємо учня
+        console.log(`onBookingChanged: admin manual booking uid=${uid}`);
+        await pushStudent(uid, "📋 Урок заплановано", `${date} о ${time}`, {
+          url: "https://id4drive.pro/cabinet/bookings",
+        });
+        await saveNotification(uid, "📋 Урок заплановано", `${date} о ${time}`, "booking_confirmed");
+      } else if (after.createdBy !== "admin") {
+        // Учень записався сам — сповіщаємо адміна
         console.log(`onBookingChanged: new booking uid=${uid}`);
         await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`);
       }
@@ -145,7 +153,7 @@ exports.onBookingChanged = onValueWritten(
     if (after.status === "confirmed" && before.status !== "confirmed") {
       console.log(`onBookingChanged: admin confirmed uid=${uid}`);
       await pushStudent(uid, "✅ Урок підтверджено", `${date} о ${time}`, {
-        url: "https://olhadrive.kiev.ua/cabinet/bookings",
+        url: "https://id4drive.pro/cabinet/bookings",
       });
       await saveNotification(uid, "✅ Урок підтверджено", `${date} о ${time}`, "booking_confirmed");
       return;
@@ -157,7 +165,7 @@ exports.onBookingChanged = onValueWritten(
       const slotUpd = buildSlotUpdates(before, true);
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
       await pushStudent(uid, "❌ Урок скасовано", `${date} о ${time}`, {
-        url: "https://olhadrive.kiev.ua/cabinet/bookings",
+        url: "https://id4drive.pro/cabinet/bookings",
       });
       await saveNotification(uid, "❌ Урок скасовано", `${date} о ${time}`, "booking_cancelled");
       if (date !== "—" && time !== "—") await inviteNextInQueue(`${date}_${time}`).catch(() => {});
@@ -206,7 +214,7 @@ exports.onQueueInvite = onValueUpdated(
     // In-app сповіщення: клієнт підписаний на цей шлях
     await db.ref(`users/${uid}/queueOffers/${slotKey}`).set({ date, time, until, slotKey }).catch(() => {});
 
-    const url = `https://olhadrive.kiev.ua/cabinet?date=${date}&time=${encodeURIComponent(time)}`;
+    const url = `https://id4drive.pro/cabinet?date=${date}&time=${encodeURIComponent(time)}`;
     const pushTitle = "🎉 Слот зарезервовано для вас!";
     const pushBody = `${date} о ${time} — у вас 30 хвилин щоб записатись`;
     await pushStudent(uid, pushTitle, pushBody, { url, date, time, slotKey });
@@ -330,13 +338,13 @@ exports.unlockVipSlots = onSchedule("every 1 hours", async () => {
       },
       webpush: {
         notification: { icon: "/favicon.svg" },
-        fcmOptions: { link: "https://olhadrive.kiev.ua/cabinet" },
+        fcmOptions: { link: "https://id4drive.pro/cabinet" },
       },
     }).catch(() => {});
   }
 });
 
-// Слот у найближчі 10 днів звільнився (скасування/розблокування) → пуш всім хто записувався за місяць
+// Слот у найближчі 10 днів звільнився → ставимо в чергу, пуш через 5 хв
 exports.onSlotFreed = onValueWritten(
   { ref: "timeslots/{date}/{slotId}", region: "europe-west1" },
   async (event) => {
@@ -359,30 +367,61 @@ exports.onSlotFreed = onValueWritten(
     const time = after.time;
     if (!time) return;
 
-    // Клієнти що записувались за останній місяць
-    const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const bookingsSnap = await db.ref("bookings").get();
-    const bookingsData = bookingsSnap.val() || {};
+    const slotKey = `${date}_${time}`;
+    // Записуємо в чергу — пуш відправиться через 5 хв якщо слот ще вільний
+    await db.ref(`slotFreedQueue/${slotKey}`).set({
+      date, time, sendAfter: Date.now() + 5 * 60 * 1000,
+    }).catch(() => {});
+  }
+);
 
-    const notifyUids = new Set();
-    for (const [uid, userBookings] of Object.entries(bookingsData)) {
-      if (!userBookings || typeof userBookings !== "object") continue;
-      for (const booking of Object.values(userBookings)) {
-        if ((booking.createdAt || 0) >= oneMonthAgo) {
-          notifyUids.add(uid);
-          break;
+// Кожну хвилину: відправляємо відкладені пуші про звільнені слоти
+exports.flushSlotFreedQueue = onSchedule(
+  { schedule: "every 1 minutes", region: "europe-west1" },
+  async () => {
+    const snap = await db.ref("slotFreedQueue").get();
+    if (!snap.exists()) return;
+    const now = Date.now();
+
+    const tasks = [];
+    snap.forEach(entry => {
+      const val = entry.val();
+      if (val && val.sendAfter <= now) tasks.push({ key: entry.key, ...val });
+    });
+
+    for (const { key, date, time } of tasks) {
+      // Видаляємо з черги одразу
+      await db.ref(`slotFreedQueue/${key}`).remove().catch(() => {});
+
+      // Перевіряємо що слот ще вільний (не встигли перезаписати)
+      const slotId = `slot${time.replace(":", "")}`;
+      const slotSnap = await db.ref(`timeslots/${date}/${slotId}`).get();
+      const slot = slotSnap.val();
+      if (!slot || slot.available !== true) continue;
+
+      // Клієнти що записувались за останній місяць
+      const oneMonthAgo = now - 30 * 24 * 60 * 60 * 1000;
+      const bookingsSnap = await db.ref("bookings").get();
+      const bookingsData = bookingsSnap.val() || {};
+
+      const notifyUids = new Set();
+      for (const [uid, userBookings] of Object.entries(bookingsData)) {
+        if (!userBookings || typeof userBookings !== "object") continue;
+        for (const booking of Object.values(userBookings)) {
+          if ((booking.createdAt || 0) >= oneMonthAgo) { notifyUids.add(uid); break; }
         }
       }
-    }
 
-    const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
-    const title = "🚗 Звільнився слот!";
-    const body  = `${dateFormatted} о ${time} — є вільне місце`;
-    const url   = `https://olhadrive.kiev.ua/cabinet?date=${date}`;
+      const slotDate = new Date(date + "T00:00:00");
+      const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
+      const title = "🚗 Звільнився слот!";
+      const body  = `${dateFormatted} о ${time} — є вільне місце`;
+      const url   = `https://id4drive.pro/cabinet?date=${date}`;
 
-    for (const uid of notifyUids) {
-      await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
-      await saveNotification(uid, title, body, "slot_freed").catch(() => {});
+      for (const uid of notifyUids) {
+        await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
+        await saveNotification(uid, title, body, "slot_freed").catch(() => {});
+      }
     }
   }
 );
@@ -405,10 +444,26 @@ exports.flushRescheduleQueue = onSchedule(
       });
     });
     await Promise.all(tasks.map(async ({ uid, bookingId, body }) => {
-      await pushStudent(uid, "🔄 Урок перенесено", body, { url: "https://olhadrive.kiev.ua/cabinet/bookings" });
+      await pushStudent(uid, "🔄 Урок перенесено", body, { url: "https://id4drive.pro/cabinet/bookings" });
       await saveNotification(uid, "🔄 Урок перенесено", body, "booking_rescheduled");
       await db.ref(`rescheduleQueue/${uid}/${bookingId}`).remove();
       console.log(`flushRescheduleQueue: sent to uid=${uid} bookingId=${bookingId}`);
     }));
+  }
+);
+
+// Студент надіслав повідомлення → пуш адміну
+exports.onStudentMessage = onValueCreated(
+  { ref: "chats/{uid}/{msgId}", region: "europe-west1" },
+  async (event) => {
+    const msg = event.data.val();
+    if (!msg || msg.from !== "student") return;
+
+    const { uid } = event.params;
+    const profileSnap = await db.ref(`users/${uid}/profile`).get();
+    const name = profileSnap.val()?.name || "Студент";
+
+    const text = msg.text || "";
+    await pushAdmin(`💬 ${name}`, text.length > 100 ? text.slice(0, 100) + "…" : text);
   }
 );

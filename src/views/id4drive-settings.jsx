@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { ref, get } from "firebase/database";
 import { LangContext } from "../App";
 import { ThemeContext } from "../theme.js";
+import { UICss, useFX } from "../ui";
 import { createT } from "../lang";
 import { db, registerAdminFCM } from "../firebase";
 
@@ -22,6 +23,7 @@ const DAY_NAMES = ["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
 
 function Toggle({ on, onChange }) {
   const { ACC_HI, ACCENT, SURF_LO, BG_DEEP, SI } = useContext(ThemeContext);
+  const { shade } = useFX();
   return (
     <div onClick={()=>onChange(!on)} style={{
       width:44,height:24,borderRadius:12,cursor:"pointer",position:"relative",
@@ -31,17 +33,17 @@ function Toggle({ on, onChange }) {
       <div style={{
         position:"absolute",top:3,left:on?21:3,width:18,height:18,borderRadius:9,
         background:"linear-gradient(135deg,#fff,#ddd)",
-        boxShadow:"0 1px 4px rgba(0,0,0,0.4)",transition:"left .2s",
+        boxShadow:`0 1px 4px ${shade(0.4)}`,transition:"left .2s",
       }}/>
     </div>
   );
 }
 
-function NumInput({ value, onChange, min=0, max=999, suffix="" }) {
+function NumInput({ value, onChange, min=0, max=999, suffix="", step=1 }) {
   const { BG_DEEP, SURF_HI, SURFACE, TEXT, SO, SI } = useContext(ThemeContext);
   return (
     <div style={{display:"flex",alignItems:"center",gap:4,background:BG_DEEP,borderRadius:9,boxShadow:SI,padding:"4px 6px"}}>
-      <button onClick={()=>onChange(Math.max(min,value-1))} style={{
+      <button onClick={()=>onChange(Math.max(min,value-step))} style={{
         width:26,height:26,borderRadius:7,border:"none",cursor:"pointer",
         background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:TEXT,fontSize:14,
         display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:SO,
@@ -49,7 +51,7 @@ function NumInput({ value, onChange, min=0, max=999, suffix="" }) {
       <span style={{fontSize:13,fontWeight:700,color:TEXT,minWidth:32,textAlign:"center"}}>
         {value}{suffix}
       </span>
-      <button onClick={()=>onChange(Math.min(max,value+1))} style={{
+      <button onClick={()=>onChange(Math.min(max,value+step))} style={{
         width:26,height:26,borderRadius:7,border:"none",cursor:"pointer",
         background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:TEXT,fontSize:14,
         display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,boxShadow:SO,
@@ -171,13 +173,13 @@ export default function SettingsView({ settings, setSettings }) {
   const { BG_DEEP, SURF_HI, SURFACE, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, TEAL, SO, SI } = useContext(ThemeContext);
   const lang = useContext(LangContext);
   const t = createT(lang);
+  const isKava = settings?.theme === "light";
+  const scrollThumb = isKava ? `rgba(92,42,26,0.2)` : `rgba(255,255,255,0.08)`;
   const css = `
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:2px}
+
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:${BG_DEEP};outline:none;box-shadow:${SI}}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:9px;background:linear-gradient(145deg,${ACC_HI},${ACCENT});cursor:pointer;box-shadow:0 2px 6px rgba(255,90,60,0.5)}
-select{color-scheme:dark}
+select{color-scheme:${isKava?"light":"dark"}}
 .sec-body{display:grid;transition:grid-template-rows .22s ease}
 .sec-body>div{overflow:hidden}
 `;
@@ -207,6 +209,7 @@ select{color-scheme:dark}
 
   return (
     <>
+      <UICss/>
       <style>{css}</style>
       <div style={{display:"flex",flexDirection:"column",gap:8,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
@@ -289,7 +292,7 @@ select{color-scheme:dark}
               ))}
             </div>
           </div>
-          <div style={{paddingTop:12,borderTop:`1px solid rgba(255,255,255,0.06)`,marginTop:12}}>
+          <div style={{paddingTop:12,borderTop:`1px solid ${BORDER}`,marginTop:12}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
               <span style={{fontSize:12,color:DIM}}>Крок слота (довгий тап)</span>
               <span style={{fontSize:13,fontWeight:800,color:TEAL}}>{settings.slotCreateStep ?? 30} хв</span>
@@ -322,8 +325,11 @@ select{color-scheme:dark}
         {/* ── ПІДТВЕРДЖЕННЯ & ЧЕРГА ── */}
         <Section title={t('set.queue.title')} icon="✅">
           <Info color={GREEN} title={t('set.queue.info_t')} text={t('set.queue.info')}/>
-          <Row label={t('set.queue.require')} hint={t('set.queue.require_h')} last>
+          <Row label={t('set.queue.require')} hint={t('set.queue.require_h')}>
             <Toggle on={settings.pendingEnabled} onChange={v=>upd("pendingEnabled",v)}/>
+          </Row>
+          <Row label={lang==="en"?"Show «Complete» button":"Кнопка «Завершити»"} hint={lang==="en"?"Show a Complete button on confirmed bookings":"Показувати кнопку «Завершити» на підтверджених записах"} last>
+            <Toggle on={settings.showCompleteBtn !== false} onChange={v=>upd("showCompleteBtn",v)}/>
           </Row>
           <div style={{paddingTop:10}}>
             <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>{t('set.queue.mode')}</div>
@@ -429,6 +435,35 @@ select{color-scheme:dark}
         </Section>
 
         {/* ── PUSH ДІАГНОСТИКА ── */}
+        {/* ── НАДБАВКИ ── */}
+        <Section title="Надбавки до уроків" icon="💰">
+          <div style={{fontSize:12,color:FAINT,marginBottom:12,marginTop:8}}>
+            Суми відображаються в меню слота при виборі надбавки.
+          </div>
+          {(settings.surcharges || []).map((amt, i) => (
+            <div key={i} style={{
+              display:"flex",alignItems:"center",gap:10,marginBottom:8,
+              padding:"10px 12px",borderRadius:12,
+              background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,boxShadow:SO,
+            }}>
+              <span style={{fontSize:13,color:GOLD,fontWeight:700,flex:1}}>Надбавка {i+1}</span>
+              <NumInput
+                value={amt}
+                onChange={v=>upd("surcharges", (settings.surcharges||[]).map((x,j)=>j===i?v:x))}
+                min={50} max={99999} suffix="₴" step={50}
+              />
+              <button onClick={()=>upd("surcharges", (settings.surcharges||[]).filter((_,j)=>j!==i))} style={{
+                background:"none",border:"none",cursor:"pointer",
+                color:"rgba(248,113,113,0.8)",fontSize:20,lineHeight:1,padding:"0 4px",
+              }}>×</button>
+            </div>
+          ))}
+          <button onClick={()=>upd("surcharges", [...(settings.surcharges||[]), 100])} style={{
+            width:"100%",padding:"11px",borderRadius:12,border:`1px dashed rgba(255,255,255,0.15)`,cursor:"pointer",
+            background:"transparent",color:FAINT,fontSize:13,fontWeight:700,marginTop:2,
+          }}>+ Додати надбавку</button>
+        </Section>
+
         <Section title="Push-сповіщення" icon="🔔" defaultOpen={true}>
           <PushDiag />
         </Section>
@@ -473,7 +508,7 @@ function PushDiag() {
         setStatus({ ok: false, msg: `Дозвіл: "${perm}" — дозволь нотифікації в налаштуваннях браузера` });
         return;
       }
-      new Notification("🔔 OlhaDrive тест", { body: "Push-нотифікації працюють!", icon: "/favicon.svg" });
+      new Notification("🔔 ID4Drive тест", { body: "Push-нотифікації працюють!", icon: "/favicon.svg" });
       setStatus({ ok: true, msg: "Нотифікація відправлена — перевір системний трей" });
     } catch (e) {
       setStatus({ ok: false, msg: `Помилка: ${e.message}` });

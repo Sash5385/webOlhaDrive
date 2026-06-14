@@ -62,7 +62,7 @@ const Ic = {
   table:  s => <I3 s={s} gr={`linear-gradient(135deg,${SURF_HI},${SURFACE})`}><svg width={s*.55} height={s*.55} viewBox="0 0 24 24" fill="none" stroke={TEXT} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg></I3>,
 };
 
-// ─── COLOR PALETTE (same as olhadrive-services) ──────────────────
+// ─── COLOR PALETTE (same as id4drive-services) ──────────────────
 const PALETTE = [
   { id:"green",   color:GREEN  },
   { id:"yellow",  color:GOLD   },
