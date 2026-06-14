@@ -3,6 +3,7 @@ import { ref, update, get, onValue, off, remove } from "firebase/database";
 import { db } from "../firebase";
 
 import { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, SO, SI, ThemeContext } from "../theme.js";
+import { useFX, panel, SCRIM } from "../ui.jsx";
 // local aliases for legacy names used in this file
 const SURFACE_HI = SURF_HI;
 const SURFACE_LO = SURF_LO;
@@ -447,8 +448,9 @@ const colorOf = (id) => PALETTE.find(p=>p.id===id)?.color || GREEN;
 // SCHEDULE VIEW with drag/resize + pinch-to-zoom + day-count
 // ═══════════════════════════════════════════════════════════════
 function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef }) {
-  const { BG, BG_DEEP, SURFACE, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, GREEN, GOLD, RED } = useContext(ThemeContext);
+  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, GREEN, GOLD, RED } = useContext(ThemeContext);
   const isLight = BG !== "#1c1d21";
+  const { shade, ink } = useFX();
   const GRID_H  = isLight ? "rgba(0,0,0,0.09)"   : "rgba(255,255,255,0.07)";
   const GRID_HH = isLight ? "rgba(0,0,0,0.04)"   : "rgba(255,255,255,0.025)";
   const FREE_BG     = isLight ? "rgba(0,0,0,0.05)"       : "rgba(255,255,255,0.05)";
@@ -457,11 +459,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const STICKY_BG   = isLight ? "rgba(58,140,30,0.16)"   : "rgba(99,211,120,0.15)";
   const STICKY_BD   = isLight ? "rgba(58,140,30,0.65)"   : "rgba(99,211,120,0.45)";
   const STICKY_CLR  = isLight ? "rgba(58,140,30,0.92)"   : "rgba(99,211,120,0.9)";
-  const OVERLAY     = isLight ? "rgba(92,42,26,0.32)"    : "rgba(0,0,0,0.45)";
-  const OVERLAY_HVY = isLight ? "rgba(92,42,26,0.55)"    : "rgba(0,0,0,0.78)";
-  const MODAL_SHADOW= isLight ? `0 8px 40px rgba(92,42,26,0.22), inset 0 1px 0 rgba(255,255,255,0.6)` : `0 8px 40px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.07)`;
-  const DIVIDER     = isLight ? BORDER                   : "rgba(255,255,255,0.06)";
-  const DIVIDER_SM  = isLight ? BORDER                   : "rgba(255,255,255,0.05)";
+  const DIVIDER     = BORDER;
+  const DIVIDER_SM  = ink(0.08);
   const [dragId, setDragId] = useState(null);
   const [holdId, setHoldId] = useState(null);
   const [quickCancelId, setQuickCancelId] = useState(null);
@@ -1776,7 +1775,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     {/* ── Модалка блокування ── */}
     {blockModal && (
       <div onClick={()=>setBlockModal(null)} style={{
-        position:"fixed",inset:0,zIndex:200,background:OVERLAY_HVY,
+        position:"fixed",inset:0,zIndex:200,background:shade(SCRIM),
         display:"flex",alignItems:"flex-end",justifyContent:"center",
         backdropFilter:"blur(12px)"
       }}>
@@ -1887,14 +1886,15 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       return (
       <div onClick={()=>setSlotOptions(null)} style={{
         position:"fixed",inset:0,zIndex:200,
-        background:OVERLAY,
+        background:shade(SCRIM),
+        backdropFilter:"blur(8px)",
         display:"flex",alignItems:"center",justifyContent:"center",
       }}>
         <div onClick={e=>e.stopPropagation()} style={{
           width:260,
-          background:BG_DEEP,
+          background:panel(SURF_HI, SURFACE),
           borderRadius:18,
-          boxShadow:MODAL_SHADOW,
+          boxShadow:`0 8px 40px ${shade(0.4)}`,
           overflow:"hidden",
         }}>
           {/* Заголовок */}
@@ -2000,7 +2000,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     {/* ── VIP слот модалка ── */}
     {vipSlotModal && (
       <div onClick={()=>setVipSlotModal(null)} style={{
-        position:"fixed",inset:0,zIndex:200,background:OVERLAY_HVY,
+        position:"fixed",inset:0,zIndex:200,background:shade(SCRIM),
         display:"flex",alignItems:"flex-end",justifyContent:"center",
         backdropFilter:"blur(12px)"
       }}>
