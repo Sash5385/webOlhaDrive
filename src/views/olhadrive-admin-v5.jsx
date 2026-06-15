@@ -356,7 +356,7 @@ const DEFAULT_SETTINGS = {
   // pending
   pendingEnabled: false, // toggle: requires confirmation
   // visual
-  theme: "dark",     // dark | light
+  theme: "light",    // dark | light
   language: "uk",    // uk | en
   // queue (waiting list)
   queueAutoFifo: true,
