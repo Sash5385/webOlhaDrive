@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
 
-const ADMIN_UID = "HztYR0M5iSbwtXlRS89Zb3ZkCdm1";
+const ADMIN_UID = "N02ZGsiO4TOLE5lPfHuLr5iYWi92";
 
 const BG_DEEP = "#161719";
 const SURFACE = "#26282c";
