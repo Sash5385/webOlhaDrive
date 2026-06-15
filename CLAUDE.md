@@ -380,3 +380,37 @@ npm run type-check
 8. Предложить дальнейшие улучшения только отдельным списком.
 
 Главная цель: стабильный коммерческий продукт, а не идеальный код.
+
+---
+
+# Деплой на Firebase Hosting
+
+## Хостинг
+
+Firebase. Проєкт: `olhadrive-booking`
+
+Сайти:
+- Admin: https://olhadrive-admin.web.app
+- Client: https://olhadrive-app.web.app
+
+## Правила деплою
+
+- Деплоїти тільки ті репо, де були зміни
+- Перед деплоєм завжди робити build
+
+## Авторизація
+
+Service account ключ зберігається в: `/home/user/olhadrive-sa.json`
+
+На початку нової сесії користувач завантажує ключ з Firebase Console:
+Project Settings → Service accounts → Generate new private key
+
+## Команди
+
+```bash
+# Build
+GOOGLE_APPLICATION_CREDENTIALS=/home/user/olhadrive-sa.json npm run build
+
+# Deploy
+GOOGLE_APPLICATION_CREDENTIALS=/home/user/olhadrive-sa.json firebase deploy --only hosting
+```
