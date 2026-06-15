@@ -1361,7 +1361,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 style={{
                   width:COL_W, height:gridHeight,
                   position:"relative", padding:"0 4px",
-                  background: `linear-gradient(135deg,${BG_DEEP},${shade(0.12)})`,
+                  background: isLight ? `linear-gradient(135deg,${SURF_LO},${BG_DEEP})` : `linear-gradient(135deg,${BG_DEEP},rgba(0,0,0,0.55))`,
                   borderRadius:14, boxShadow:SHADOW_IN, cursor:"cell",
                   userSelect:"none", WebkitUserSelect:"none", WebkitTouchCallout:"none",
                 }}>
