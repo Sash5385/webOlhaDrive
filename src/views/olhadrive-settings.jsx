@@ -510,8 +510,6 @@ function PushDiag() {
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.ready;
         await reg.showNotification("🔔 OlhaDrive тест", { body: "Push-нотифікації працюють!", icon: "/favicon.svg" });
-      } else {
-        new Notification("🔔 OlhaDrive тест", { body: "Push-нотифікації працюють!", icon: "/favicon.svg" });
       }
       setStatus({ ok: true, msg: "Нотифікація відправлена — перевір системний трей" });
     } catch (e) {

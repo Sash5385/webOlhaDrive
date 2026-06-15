@@ -160,7 +160,7 @@ export default function ChatsView() {
 .chat-row.open{background:linear-gradient(135deg,rgba(91,155,255,0.1),rgba(91,155,255,0.04))}
 .chat-row.broadcast-open{background:linear-gradient(135deg,rgba(168,85,247,0.12),rgba(124,58,237,0.06))}
 
-.msg-input{background:transparent;border:none;outline:none;color:${TEXT};font-size:13px;resize:none;font-family:inherit;flex:1;padding:0;line-height:1.4;max-height:80px;overflow-y:auto}
+.msg-input{background:transparent;border:none;outline:none;color:${TEXT};font-size:16px;resize:none;font-family:inherit;flex:1;padding:0;line-height:1.4;max-height:80px;overflow-y:auto}
 
 @keyframes drop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 .drop{animation:drop .18s ease both}
@@ -348,7 +348,7 @@ export default function ChatsView() {
           <div style={{flex:1,background:BG_DEEP,borderRadius:11,boxShadow:SI,padding:"4px 11px",display:"flex",alignItems:"center",gap:7}}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Пошук учня…"
-              style={{flex:1,background:"transparent",border:"none",outline:"none",color:TEXT,padding:"8px 0",fontSize:13}}/>
+              style={{flex:1,background:"transparent",border:"none",outline:"none",color:TEXT,padding:"8px 0",fontSize:16}}/>
             {search && <button onClick={()=>setSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:FAINT,fontSize:16,padding:0,lineHeight:1}}>×</button>}
           </div>
           {totalUnread>0 && (
