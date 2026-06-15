@@ -1272,14 +1272,14 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 onPointerUp={()=>clearTimeout(dayLongPressRef.current)}
                 onPointerLeave={()=>clearTimeout(dayLongPressRef.current)}
                 style={{
-                  position:"sticky", top:0, zIndex:4,
+                  position:"sticky", top:0, zIndex:12,
                   height:HEADER_H, flexShrink:0, marginBottom:4,
                   display:"flex", flexDirection:"column",
                   alignItems:"center", justifyContent:"space-between",
                   padding:"3px 2px 3px", borderRadius:10, cursor: isPastDay ? "default" : "pointer",
                   opacity: isPastDay ? 0.35 : 1, overflow:"visible",
-                  background: isClosedDay ? `rgba(220,60,60,0.13)` : isToday ? `rgba(247,201,72,0.18)` : isOpenCol ? (isLight ? `rgba(58,140,30,0.12)` : `rgba(99,211,120,0.13)`) : (isLight ? `rgba(0,0,0,0.07)` : `rgba(0,0,0,0.18)`),
-                  boxShadow: isClosedDay ? `inset 0 0 0 1.5px rgba(220,60,60,0.7)` : isToday ? `inset 0 0 0 1.5px rgba(247,201,72,0.55)` : isOpenCol ? (isLight ? `inset 0 0 0 1px rgba(58,140,30,0.5)` : `inset 0 0 0 1px rgba(99,211,120,0.35)`) : "none",
+                  background: isClosedDay ? `rgba(220,60,60,0.13)` : isToday ? `rgba(247,201,72,0.18)` : isOpenCol ? `rgba(99,211,120,0.13)` : `${shade(0.18)}`,
+                  boxShadow: isClosedDay ? `inset 0 0 0 1.5px rgba(220,60,60,0.7)` : isToday ? `inset 0 0 0 1.5px rgba(247,201,72,0.55)` : isOpenCol ? `inset 0 0 0 1px rgba(99,211,120,0.35)` : "none",
                 }}>
                 <div style={{fontSize:9, fontWeight:700, lineHeight:1.2,
                   color: isClosedDay ? RED : isToday ? GOLD : isOpenCol ? GREEN : TEXT_FAINT,
@@ -1361,7 +1361,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 style={{
                   width:COL_W, height:gridHeight,
                   position:"relative", padding:"0 4px",
-                  background: isLight ? `linear-gradient(135deg,${SURF_LO},${BG_DEEP})` : `linear-gradient(135deg,${BG_DEEP},rgba(0,0,0,0.55))`,
+                  background: `linear-gradient(135deg,${BG_DEEP},${shade(0.12)})`,
                   borderRadius:14, boxShadow:SHADOW_IN, cursor:"cell",
                   userSelect:"none", WebkitUserSelect:"none", WebkitTouchCallout:"none",
                 }}>
