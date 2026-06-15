@@ -1144,7 +1144,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   return (
     <>
     <style>{GLOBAL_CSS}</style>
-    <Card style={{padding:"6px 3px 0", overflow:"hidden", flex:1, minHeight:0, display:"flex", flexDirection:"column"}}>
+    <Card style={{padding:"6px 3px 0", overflow:"hidden", flex:1, minHeight:0, display:"flex", flexDirection:"column", background:SURFACE}}>
       <div style={{display:"flex", flex:1, minHeight:0, overflow:"hidden"}}>
 
         {/* TIME COLUMN — fixed left, never scrolls */}
@@ -1152,6 +1152,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           width:TIME_COL_W, flexShrink:0, zIndex:10,
           display:"flex", flexDirection:"column",
           borderRight:`1px solid ${BORDER}`,
+          background:SURFACE,
         }}>
           {/* Кнопка «Згенерувати всі слоти» — у кутовому спейсері */}
           <div style={{height:HEADER_H + 4, flexShrink:0, display:"flex", alignItems:"center", justifyContent:"center"}}>
