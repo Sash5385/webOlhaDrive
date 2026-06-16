@@ -226,7 +226,7 @@ function QueueRow({ item, pos, onInvite, onBooked, onArchive, onDelete, dragHand
 
 // ─── MAIN ────────────────────────────────────────────────────────
 export default function QueueView({ settings }) {
-  const { BG_DEEP, SURF_HI, SURFACE, BORDER, TEXT, DIM, FAINT, GOLD, GREEN, SO, SI } = useContext(ThemeContext);
+  const { BG_DEEP, SURF_HI, SURFACE, BORDER, TEXT, DIM, FAINT, GOLD, GREEN, BLUE, ACCENT, TEAL, SO, SI } = useContext(ThemeContext);
   const [all,       setAll]       = useState([]);
   const [showAdd,   setShowAdd]   = useState(false);
   const [showArch,  setShowArch]  = useState(false);
@@ -245,11 +245,18 @@ export default function QueueView({ settings }) {
 .modal-in{animation:modal-in .22s ease both}
 `;
 
+  const colorIdMap = useMemo(() => ({
+    green: GREEN, yellow: GOLD, blue: BLUE, purple: PURPLE2,
+    teal: TEAL, red: "#ff5a3c", pink: "#f472b6", orange: "#fb923c",
+  }), [GREEN, GOLD, BLUE, TEAL]);
+
   const svcMap = useMemo(() => {
     const m = { ...SERVICES };
-    (settings?.services || []).forEach(s => { if (s?.id) m[s.id] = { name: s.name, color: s.colorId }; });
+    (settings?.services || []).forEach(s => {
+      if (s?.id) m[s.id] = { name: s.name, color: colorIdMap[s.colorId] || s.colorId };
+    });
     return m;
-  }, [settings?.services]);
+  }, [settings?.services, colorIdMap]);
 
   // Firebase sync — підтримує і клієнтську структуру queue/${slotKey}/entries/${uid}
   useEffect(() => {

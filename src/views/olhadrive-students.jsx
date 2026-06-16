@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { ref, onValue, off, update, push, remove, get } from "firebase/database";
+import { ref, onValue, update, push, remove, get } from "firebase/database";
 import { db } from "../firebase";
 
 import { ThemeContext } from "../theme.js";
@@ -407,8 +407,7 @@ export default function StudentsView() {
   const [showNew,    setShowNew]    = useState(false);
 
   useEffect(() => {
-    const r = ref(db, "users");
-    const handler = onValue(r, snap => {
+    const unsub = onValue(ref(db, "users"), snap => {
       const data = snap.val() || {};
       setStudents(Object.entries(data).map(([uid, u]) => {
         const p = u.profile || {};
@@ -427,7 +426,7 @@ export default function StudentsView() {
       }));
       setLoading(false);
     });
-    return () => off(r, "value", handler);
+    return unsub;
   }, []);
 
   const toggle = id => setExpanded(e => { const n=new Set(e); n.has(id)?n.delete(id):n.add(id); return n; });
