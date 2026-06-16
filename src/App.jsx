@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense, createContext, useContext } from "react";
-import { useRegisterSW } from 'virtual:pwa-register/react'
+import { useAppUpdate } from "./hooks/useAppUpdate"
 import { ref, onValue, update, push, remove, get } from "firebase/database";
 import { db, registerAdminFCM, onAdminForegroundMessage } from "./firebase";
 import { useAdminAuth, LoginScreen } from "./AdminAuth";
@@ -770,13 +770,7 @@ const pendingDeletesRef = React.useRef(new Set());
     });
   };
 
-  const { needRefresh: [needRefresh], updateServiceWorker: _doUpdate } = useRegisterSW()
-  const [isUpdating, setIsUpdating] = useState(false)
-  const updateServiceWorker = async () => {
-    if (isUpdating) return
-    setIsUpdating(true)
-    await _doUpdate(true)
-  }
+  const { needRefresh, updateServiceWorker, isUpdating } = useAppUpdate()
   const lang = settings.language || 'uk';
   useEffect(() => { setGlobalLang(lang); }, [lang]);
 
