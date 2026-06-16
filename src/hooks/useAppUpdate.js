@@ -18,6 +18,7 @@ async function hasNewVersion() {
 
 export function useAppUpdate() {
   const [needRefresh, setNeedRefresh] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   useEffect(() => {
     const trigger = () => setNeedRefresh(true)
@@ -42,5 +43,17 @@ export function useAppUpdate() {
     }
   }, [])
 
-  return { needRefresh, updateServiceWorker: () => window.location.reload() }
+  const updateServiceWorker = async () => {
+    if (isUpdating) return
+    setIsUpdating(true)
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations()
+      regs.forEach(reg => {
+        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' })
+      })
+    }
+    setTimeout(() => window.location.reload(), 300)
+  }
+
+  return { needRefresh, updateServiceWorker, isUpdating }
 }

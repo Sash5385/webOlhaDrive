@@ -805,8 +805,11 @@ const pendingDeletesRef = React.useRef(new Set());
         <BottomNav active={tab} onChange={switchTab} settings={settings} chatUnread={chatUnread}/>
       </div>
       {needRefresh && (
-        <div className="update-banner" onClick={updateServiceWorker}>
-          Доступне оновлення — натисніть щоб оновити
+        <div className={`update-banner${isUpdating ? ' update-banner--loading' : ''}`} onClick={updateServiceWorker}>
+          {isUpdating
+            ? <><span className="update-spinner" /> Оновлення...</>
+            : 'Доступне оновлення — натисніть щоб оновити'
+          }
         </div>
       )}
     </>
