@@ -449,7 +449,7 @@ const colorOf = (id) => PALETTE.find(p=>p.id===id)?.color || GREEN;
 // ═══════════════════════════════════════════════════════════════
 // SCHEDULE VIEW with drag/resize + pinch-to-zoom + day-count
 // ═══════════════════════════════════════════════════════════════
-function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef }) {
+function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef, openSlotsRef }) {
   const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, GREEN, GOLD, RED, SO, STRIPE_A, STRIPE_B } = useContext(ThemeContext);
   const isLight = BG !== "#1c1d21";
   const { glow, shade, ink } = useFX();
@@ -550,6 +550,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       setOpenSlots(slots);
       setViewingSlots(viewing);
       if (slotExistsRef) slotExistsRef.current = exists;
+      if (openSlotsRef) openSlotsRef.current = slots;
     });
     return () => unsub();
   }, []);
