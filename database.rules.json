@@ -5,20 +5,20 @@
       ".write": "auth != null"
     },
     "admin": {
-      ".read": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'",
-      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'"
+      ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
     },
     "admin_settings": {
       ".read": true,
-      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'"
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
     },
     "admin_data": {
-      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       "services": {
         ".read": "auth != null"
       },
       "$other": {
-        ".read": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'"
+        ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
       }
     },
     "timeslots": {
@@ -29,17 +29,17 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
       }
     },
     "queue": {
       ".read": "auth != null",
-      ".write": "auth != null && auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1'",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       "$slotKey": {
         "entries": {
           ".read": "auth != null",
           "$uid": {
-            ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
+            ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
           }
         }
       }
@@ -48,7 +48,7 @@
       ".read": "auth != null",
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
       }
     },
     "chats": {
@@ -57,8 +57,8 @@
         ".write": "auth != null"
       },
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
       }
     },
     "chatMeta": {
@@ -67,14 +67,14 @@
         ".write": "auth != null"
       },
       "$uid": {
-        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
       }
     },
     "notifications": {
       "$uid": {
         ".read": "auth != null && auth.uid === $uid",
-        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'HztYR0M5iSbwtXlRS89Zb3ZkCdm1')"
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
       }
     },
     "settings": {

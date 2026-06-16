@@ -1059,7 +1059,13 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   };
 
   const handleAction = (action, b) => {
-    if (action === "confirm") setBookings(bs=>bs.map(x=>x.id===b.id?{...x,status:"confirmed"}:x));
+    if (action === "confirm") {
+      setBookings(bs=>bs.map(x=>x.id===b.id?{...x,status:"confirmed"}:x));
+      if (b.userId) {
+        const ks = [...new Set([b._fbKey, b.id].filter(Boolean))];
+        ks.forEach(k => update(ref(db, `bookings/${b.userId}/${k}`), { status:"confirmed" }).catch(()=>{}));
+      }
+    }
     if (action === "cancel") {
       // Відновити timeslots
       const cancelOne = (mb) => {
@@ -2400,6 +2406,16 @@ function BookingModal({ booking, onClose, onAction, settings }) {
           }}>{IcoChat} Чат</button>
         </div>
 
+        {/* Confirm button (only for pending bookings) */}
+        {booking.status === "pending" && (
+          <button onClick={() => { onAction("confirm", booking); onClose(); }} style={{
+            width:"100%", padding:"11px", border:"none", cursor:"pointer",
+            background:"linear-gradient(145deg,#9ee07a,#5fb83d)",
+            borderTop:`1px solid ${ink(0.06)}`,
+            color:"#fff", fontSize:13, fontWeight:800,
+          }}>✓ Підтвердити</button>
+        )}
+
         {/* Cancel link */}
         <button onClick={() => { onAction("cancel", booking); onClose(); }} style={{
           width:"100%", padding:"9px", border:"none", cursor:"pointer",
@@ -3361,7 +3377,13 @@ export default function App() {
   };
 
   const handleAction = (action, b) => {
-    if (action === "confirm")  setBookings(bs=>bs.map(x=>x.id===b.id?{...x,status:"confirmed"}:x));
+    if (action === "confirm") {
+      setBookings(bs=>bs.map(x=>x.id===b.id?{...x,status:"confirmed"}:x));
+      if (b.userId) {
+        const ks = [...new Set([b._fbKey, b.id].filter(Boolean))];
+        ks.forEach(k => update(ref(db, `bookings/${b.userId}/${k}`), { status:"confirmed" }).catch(()=>{}));
+      }
+    }
     if (action === "cancel") {
       if (b.userId && b.id) {
         // Скасовуємо обидва можливі вузли (дубль міг з'явитись від старого коду)
