@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useContext } from "react";
-import { ref, onValue, off, push, update, set, increment, remove } from "firebase/database";
+import { ref, onValue, push, update, set, increment, remove } from "firebase/database";
 import { db } from "../firebase";
 import { LangContext } from "../App";
 
@@ -174,6 +174,7 @@ export default function ChatsView() {
   const [contacts,      setContacts]      = useState([]);
   const [messages,      setMessages]      = useState({}); // { [uid]: [{...}] }
   const [generalMsgs,   setGeneralMsgs]   = useState([]);
+  const [broadcastMsgs, setBroadcastMsgs] = useState([]);
   const [openId,        setOpenId]        = useState(null);
   const [search,        setSearch]        = useState("");
   const [deletingId,    setDeletingId]    = useState(null);
@@ -182,8 +183,7 @@ export default function ChatsView() {
 
   // ── Load students from /users ──────────────────────────────────
   useEffect(() => {
-    const r = ref(db, "users");
-    const handler = onValue(r, snap => {
+    const unsub = onValue(ref(db, "users"), snap => {
       const data = snap.val() || {};
       const list = Object.entries(data).map(([uid, u]) => {
         const p = u.profile || {};
@@ -201,7 +201,7 @@ export default function ChatsView() {
       setContacts(list);
       setLoading(false);
     });
-    return () => off(r, "value", handler);
+    return unsub;
   }, []);
 
   // ── Subscribe to messages for each contact ──────────────────────
@@ -220,13 +220,9 @@ export default function ChatsView() {
     contacts.forEach(c => {
       if (msgUnsubs.current[c.id]) return;
       const r = ref(db, `chats/${c.id}`);
-      const handler = onValue(r, snap => {
-        const data = snap.val() || {};
-        const msgs = Object.entries(data)
-          .map(([id, m]) => ({...m, id}))
-          .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+      const unsub = onValue(r, snap => {
+        const msgs = Object.entries(snap.val()||{}).map(([id,m])=>({...m,id})).sort((a,b)=>(a.ts||0)-(b.ts||0)||(a.id>b.id?1:-1));
         setMessages(prev => ({...prev, [c.id]: msgs}));
-        // Update lastMsg/lastTime
         if (msgs.length > 0) {
           const last = msgs[msgs.length - 1];
           setContacts(cs => cs.map(ct => ct.id === c.id
@@ -236,7 +232,7 @@ export default function ChatsView() {
           ));
         }
       });
-      msgUnsubs.current[c.id] = () => off(r, "value", handler);
+      msgUnsubs.current[c.id] = unsub;
     });
 
     return () => {};
@@ -250,15 +246,20 @@ export default function ChatsView() {
 
   // ── Subscribe to general chat ──────────────────────────────────
   useEffect(() => {
-    const r = ref(db, "chats/general");
-    const handler = onValue(r, snap => {
-      const data = snap.val() || {};
-      const msgs = Object.entries(data)
-        .map(([id, m]) => ({...m, id}))
-        .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+    const unsub = onValue(ref(db, "chats/general"), snap => {
+      const msgs = Object.entries(snap.val()||{}).map(([id,m])=>({...m,id})).sort((a,b)=>(a.ts||0)-(b.ts||0)||(a.id>b.id?1:-1));
       setGeneralMsgs(msgs);
     });
-    return () => off(r, "value", handler);
+    return unsub;
+  }, []);
+
+  // ── Broadcast history ─────────────────────────────────────────
+  useEffect(() => {
+    const unsub = onValue(ref(db, "chats/__broadcast__"), snap => {
+      const msgs = Object.entries(snap.val()||{}).map(([id,m])=>({...m,id})).sort((a,b)=>(a.ts||0)-(b.ts||0)||(a.id>b.id?1:-1));
+      setBroadcastMsgs(msgs);
+    });
+    return unsub;
   }, []);
 
   // ── Free slot broadcast listener ──────────────────────────────
@@ -301,6 +302,7 @@ export default function ChatsView() {
     const ts = Date.now();
     const msg = {from:"admin", text, time, ts};
     if (contactId === BROADCAST_ID) {
+      push(ref(db,"chats/__broadcast__"),{...msg,broadcast:true}).catch(()=>{});
       contacts.forEach(c => {
         push(ref(db, `chats/${c.id}`), {...msg, broadcast:true}).catch(()=>{});
         update(ref(db, `chatMeta/${c.id}`), { unreadForStudent: increment(1), lastMsg: text, lastTs: ts }).catch(()=>{});
@@ -337,7 +339,6 @@ export default function ChatsView() {
   const totalUnread = contacts.reduce((s,c)=>s+c.unread, 0);
   const broadcastOpen = openId === BROADCAST_ID;
   const generalOpen = openId === GENERAL_ID;
-  const broadcastMsgs = [];
 
   return (
     <>

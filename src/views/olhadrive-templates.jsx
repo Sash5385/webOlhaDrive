@@ -1,5 +1,5 @@
 import { useState, useRef, useContext, useEffect } from "react";
-import { ref, get, set } from "firebase/database";
+import { ref, get, set, push, update, increment } from "firebase/database";
 import { db } from "../firebase";
 import { LangContext } from "../App";
 import { createT } from "../lang";
@@ -89,7 +89,7 @@ const INIT_TEMPLATES = [
     body:"Привіт! Для тебе діє спеціальна пропозиція: {послуга} за {ціна} ₴. Діє тільки цього тижня!" },
 ];
 
-const STUDENTS = ["Марія Коваль","Іван Петренко","Олена Мороз","Дмитро Сало","Юлія Денисюк"];
+// Hardcoded list removed — students are loaded from Firebase in SendModal
 
 // ─── HELPERS ────────────────────────────────────────────────────
 function Pill({ label, color, bg }) {
@@ -124,12 +124,38 @@ function BodyPreview({ body, style={} }) {
 // ─── SEND MODAL ──────────────────────────────────────────────────
 function SendModal({ tpl, onClose }) {
   const { SURFACE, BG, DIM, FAINT, SURF_HI, ACC_HI, ACCENT, SO, TEXT } = useContext(ThemeContext);
-  const [selected, setSelected] = useState([]);
-  const [channel, setChannel] = useState(tpl.channel);
-  const [preview, setPreview] = useState(tpl.body);
+  const [students,  setStudents]  = useState([]);
+  const [selected,  setSelected]  = useState([]);
+  const [channel,   setChannel]   = useState(tpl.channel);
+  const [preview,   setPreview]   = useState(tpl.body);
+  const [sending,   setSending]   = useState(false);
+  const [sent,      setSent]      = useState(false);
   const ch = chOf(channel);
 
-  const toggle = s => setSelected(sel => sel.includes(s) ? sel.filter(x=>x!==s) : [...sel,s]);
+  useEffect(() => {
+    get(ref(db, "users")).then(snap => {
+      const d = snap.val() || {};
+      const list = Object.entries(d).map(([uid, u]) => ({ uid, name: u.profile?.name || "Учень" }));
+      setStudents(list);
+    }).catch(() => {});
+  }, []);
+
+  const allIds = students.map(s => s.uid);
+  const toggle = uid => setSelected(sel => sel.includes(uid) ? sel.filter(x=>x!==uid) : [...sel,uid]);
+
+  const handleSend = async () => {
+    if (!selected.length || sending) return;
+    setSending(true);
+    const time = new Date().toLocaleTimeString("uk",{hour:"2-digit",minute:"2-digit"});
+    const ts = Date.now();
+    await Promise.all(selected.map(uid =>
+      push(ref(db,`chats/${uid}`),{from:"admin",text:preview,time,ts}).catch(()=>{})
+        .then(() => update(ref(db,`chatMeta/${uid}`),{unreadForStudent:increment(1),lastMsg:preview,lastTs:ts}).catch(()=>{}))
+    ));
+    setSending(false);
+    setSent(true);
+    setTimeout(onClose, 1200);
+  };
 
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"flex-end",backdropFilter:"blur(8px)"}}>
@@ -158,17 +184,17 @@ function SendModal({ tpl, onClose }) {
         {/* students */}
         <div style={{fontSize:10,color:FAINT,letterSpacing:1,marginBottom:8}}>КОМУ НАДІСЛАТИ</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
-          <button onClick={()=>setSelected(STUDENTS)} style={{
+          <button onClick={()=>setSelected(allIds)} style={{
             padding:"7px 12px",borderRadius:12,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,
-            background:selected.length===STUDENTS.length?`linear-gradient(165deg,${ACC_HI},${ACCENT})`:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,
-            color:selected.length===STUDENTS.length?"#fff":DIM,boxShadow:SO
+            background:selected.length===students.length&&students.length>0?`linear-gradient(165deg,${ACC_HI},${ACCENT})`:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,
+            color:selected.length===students.length&&students.length>0?"#fff":DIM,boxShadow:SO
           }}>Всі учні</button>
-          {STUDENTS.map(s=>(
-            <button key={s} onClick={()=>toggle(s)} style={{
+          {students.map(s=>(
+            <button key={s.uid} onClick={()=>toggle(s.uid)} style={{
               padding:"7px 12px",borderRadius:12,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,
-              background:selected.includes(s)?`linear-gradient(165deg,${BLUE}99,${BLUE}44)`:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,
-              color:selected.includes(s)?BLUE:DIM,boxShadow:SO
-            }}>{s}</button>
+              background:selected.includes(s.uid)?`linear-gradient(165deg,${BLUE}99,${BLUE}44)`:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,
+              color:selected.includes(s.uid)?BLUE:DIM,boxShadow:SO
+            }}>{s.name}</button>
           ))}
         </div>
 
@@ -190,13 +216,13 @@ function SendModal({ tpl, onClose }) {
 
         <div style={{display:"flex",gap:10}}>
           <button onClick={onClose} style={{flex:1,padding:"13px",borderRadius:14,border:"none",cursor:"pointer",background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO}}>Скасувати</button>
-          <button onClick={()=>{ if(selected.length>0){ alert(`✅ Надіслано ${selected.length} учням через ${ch.label}`); onClose(); }}} disabled={selected.length===0} style={{
+          <button onClick={handleSend} disabled={selected.length===0||sending||sent} style={{
             flex:2,padding:"13px",borderRadius:14,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
             background:selected.length>0?`linear-gradient(165deg,${ACC_HI},${ACCENT})`:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,
             color:selected.length>0?"#fff":FAINT,
             boxShadow:selected.length>0?`-2px 5px 14px rgba(255,90,60,0.45),inset 1px 1px 0 rgba(255,255,255,0.3)`:SO
           }}>
-            {ch.emoji} Надіслати {selected.length>0?`(${selected.length})`:""}
+            {sent ? "✅ Надіслано!" : sending ? "Надсилаємо…" : `${ch.emoji} Надіслати${selected.length>0?` (${selected.length})`:""}`}
           </button>
         </div>
       </div>
