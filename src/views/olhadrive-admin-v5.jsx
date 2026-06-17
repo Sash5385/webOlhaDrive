@@ -1600,7 +1600,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                           <div style={{position:"absolute",top:2,left:4,right:2,bottom:2,display:"flex",flexDirection:"column",justifyContent:"center",gap:1,overflow:"hidden"}}>
                             <span style={{fontSize:Math.min(fs+1,11),lineHeight:1}}>📌</span>
                             {nameLines.slice(0,2).map((word,i)=>(
-                              <div key={i} style={{fontSize:fs,fontWeight:700,color:"#2dd4bf",lineHeight:1.2,whiteSpace:"normal",wordBreak:"break-word",overflowWrap:"anywhere",textShadow:"0 1px 2px rgba(0,0,0,0.6)"}}>{word}</div>
+                              <div key={i} style={{fontSize:fs,fontWeight:700,color:"#2dd4bf",lineHeight:1.2,whiteSpace:"normal",wordBreak:"break-word",overflowWrap:"anywhere",textShadow:"none"}}>{word}</div>
                             ))}
                           </div>
                         );
@@ -1640,7 +1640,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                                 lineHeight: 1.2, textAlign:"center",
                                 whiteSpace:"normal", wordBreak:"break-word", overflowWrap:"anywhere",
                                 width:"100%",
-                                textShadow:"0 1px 2px rgba(0,0,0,0.55)",
+                                textShadow:"none",
                               }}>{ln.text}</div>
                             ))}
                           </div>
