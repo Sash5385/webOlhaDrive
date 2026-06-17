@@ -93,7 +93,7 @@ function Progress({ hours, offset }) {
 // ─── NEW STUDENT FORM ────────────────────────────────────────────
 function NewStudentForm({ onSave, onCancel }) {
   const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO } = useContext(ThemeContext);
-  const [d, setD] = useState({ name:"", phone:"", discount:0, notes:"", type:"private" });
+  const [d, setD] = useState({ name:"", phone:"+380", discount:0, notes:"", type:"private", isVip:false, tsc:"" });
   const inp = (k, label, opts={}) => (
     <div>
       <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>{label}</div>
@@ -124,6 +124,37 @@ function NewStudentForm({ onSave, onCancel }) {
               }}>{l}</button>
             ))}
           </div>
+        </div>
+      </div>
+      {/* ТСЦ — тільки для автошколи */}
+      {d.type==="school" && (
+        <div>
+          <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>ТСЦ</div>
+          <div style={{display:"flex",gap:6}}>
+            {[["ТСЦ 8041","8041"],["ТСЦ 8042","8042"]].map(([val,lbl])=>(
+              <button key={val} onClick={()=>setD(x=>({...x,tsc:val}))} style={{
+                flex:1,padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",
+                fontSize:11,fontWeight:700,
+                background:d.tsc===val?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
+                color:d.tsc===val?"#fff":DIM,boxShadow:SO,
+              }}>{lbl}</button>
+            ))}
+          </div>
+        </div>
+      )}
+      {/* VIP-мітка */}
+      <div onClick={()=>setD(x=>({...x,isVip:!x.isVip}))} style={{
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"10px 12px",borderRadius:10,cursor:"pointer",
+        background:d.isVip?"rgba(168,85,247,0.12)":BG_DEEP,
+        border:d.isVip?"1px solid rgba(168,85,247,0.35)":`1px solid ${BORDER}`,
+      }}>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:d.isVip?"#c084fc":TEXT}}>VIP учень</div>
+          <div style={{fontSize:10,color:FAINT,marginTop:2}}>{d.isVip?"Має доступ до VIP слотів":"Без доступу до VIP слотів"}</div>
+        </div>
+        <div style={{width:36,height:20,borderRadius:10,position:"relative",background:d.isVip?"linear-gradient(145deg,#a855f7,#7c3aed)":"rgba(255,255,255,0.08)",transition:"background .2s",flexShrink:0}}>
+          <div style={{position:"absolute",top:2,left:d.isVip?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
         </div>
       </div>
       <div>
@@ -462,8 +493,9 @@ export default function StudentsView() {
       discount: Number(data.discount) || 0,
       notes:    data.notes.trim(),
       blocked:  false,
-      isVip:    false,
+      isVip:    data.isVip||false,
       hours:    0,
+      tsc:      data.type==="school"?(data.tsc||""):"",
     });
     setShowNew(false);
     setExpanded(e => new Set([...e, newRef.key]));
