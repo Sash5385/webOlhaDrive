@@ -3585,14 +3585,13 @@ export default function App() {
 }
 
 function PersonalEventModal({ data, onClose, onConfirm }) {
-  const { BG_DEEP, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT } = useContext(ThemeContext);
+  const { BG_DEEP, SURF_HI, TEXT, DIM, FAINT } = useContext(ThemeContext);
   const { shade, ink } = useFX();
   const [title,  setTitle]  = useState("");
   const [durMin, setDurMin] = useState(60);
-  const [note,   setNote]   = useState("");
 
   useEffect(() => {
-    if (data) { setTitle(""); setDurMin(60); setNote(""); }
+    if (data) { setTitle(""); setDurMin(60); }
   }, [!!data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data) return null;
@@ -3614,100 +3613,71 @@ function PersonalEventModal({ data, onClose, onConfirm }) {
 
   return (
     <div onClick={onClose} style={{
-      position:"fixed",inset:0,background:shade(SCRIM),zIndex:200,
-      display:"flex",alignItems:"flex-end",justifyContent:"center",
-      backdropFilter:"blur(8px)",
+      position:"fixed",inset:0,zIndex:200,
+      background:shade(SCRIM),backdropFilter:"blur(4px)",
+      display:"flex",alignItems:"flex-start",justifyContent:"center",
+      paddingTop:8,
     }}>
       <div onClick={e=>e.stopPropagation()} style={{
-        width:"100%",maxWidth:480,background:BG_DEEP,
-        borderRadius:"24px 24px 0 0",
-        boxShadow:`0 -2px 0 rgba(45,212,191,0.3), 0 -16px 60px ${shade(0.6)}`,
-        maxHeight:"85vh",overflowY:"auto",
-        WebkitOverflowScrolling:"touch",scrollbarWidth:"none",
+        width:"100%",maxWidth:440,margin:"0 12px",
+        background:`linear-gradient(180deg,${SURF_HI},${BG_DEEP})`,
+        borderRadius:"0 0 22px 22px",
+        padding:"14px 16px 18px",
+        boxShadow:`0 10px 40px ${shade(0.55)}`,
       }}>
-        <div style={{
-          padding:"18px 18px 14px",
-          background:"linear-gradient(145deg,rgba(45,212,191,0.12),rgba(20,184,166,0.05))",
-          borderBottom:"1px solid rgba(45,212,191,0.15)",
-        }}>
-          <div style={{fontSize:18,fontWeight:800,color:"#2dd4bf",marginBottom:2}}>📌 Особиста подія</div>
-          <div style={{fontSize:12,color:DIM}}>{data.dateStr} · {data.time}</div>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:800,color:"#2dd4bf"}}>📌 Особиста подія</div>
+          <div style={{fontSize:11,color:DIM}}>{data.dateStr} · {data.time}</div>
         </div>
 
-        <div style={{padding:"16px 18px 32px",display:"flex",flexDirection:"column",gap:18}}>
-          {/* Назва */}
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Назва</div>
-            <input
-              autoFocus
-              value={title}
-              onChange={e=>setTitle(e.target.value)}
-              placeholder="Наприклад: Лікар, Справи..."
-              style={{
-                width:"100%",padding:"10px 12px",borderRadius:12,
-                background:SURF_LO,border:`1px solid ${BORDER}`,
-                color:TEXT,fontSize:14,outline:"none",boxSizing:"border-box",
-              }}
-            />
-          </div>
+        <input
+          autoFocus
+          value={title}
+          onChange={e=>setTitle(e.target.value)}
+          placeholder="Назва події…"
+          style={{
+            width:"100%",padding:"11px 13px",borderRadius:12,
+            background:ink(0.06),border:`1.5px solid ${ink(0.10)}`,
+            color:TEXT,fontSize:15,outline:"none",boxSizing:"border-box",
+            marginBottom:12,fontFamily:"inherit",
+          }}
+        />
 
-          {/* Тривалість */}
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Тривалість</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {DUR_OPTIONS.map(o=>(
-                <button key={o.value} onClick={()=>setDurMin(o.value)} style={{
-                  padding:"6px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
-                  background: durMin===o.value ? "rgba(45,212,191,0.2)" : SURF_HI,
-                  color: durMin===o.value ? "#2dd4bf" : DIM,
-                  outline: durMin===o.value ? "1.5px solid rgba(45,212,191,0.5)" : "none",
-                }}>{o.label}</button>
-              ))}
-            </div>
-          </div>
+        <div style={{display:"flex",gap:6,marginBottom:14}}>
+          {DUR_OPTIONS.map(o=>(
+            <button key={o.value} onClick={()=>setDurMin(o.value)} style={{
+              flex:1,padding:"8px 0",borderRadius:10,border:"none",cursor:"pointer",
+              fontSize:12,fontWeight:700,fontFamily:"inherit",
+              background: durMin===o.value ? "rgba(45,212,191,0.2)" : ink(0.07),
+              color: durMin===o.value ? "#2dd4bf" : DIM,
+              outline: durMin===o.value ? "1.5px solid rgba(45,212,191,0.5)" : "none",
+            }}>{o.label}</button>
+          ))}
+        </div>
 
-          {/* Нотатка */}
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Нотатка (необов'язково)</div>
-            <textarea
-              value={note}
-              onChange={e=>setNote(e.target.value)}
-              rows={2}
-              placeholder="Деталі..."
-              style={{
-                width:"100%",padding:"10px 12px",borderRadius:12,resize:"none",
-                background:SURF_LO,border:`1px solid ${BORDER}`,
-                color:TEXT,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",
-              }}
-            />
-          </div>
-
-          <button
-            disabled={!canSave}
-            onClick={()=>{
-              if (!canSave) return;
-              onConfirm({
-                id: `personal-${Date.now()}`,
-                day, date: data.dateStr,
-                startMin, durMin,
-                name: title.trim(),
-                note: note.trim(),
-                type: "personal",
-                status: "personal",
-                tsc: "",
-                wasAdminBlocked: !!data.slot?.adminBlocked,
-                createdAt: Date.now(),
-                createdBy: "admin",
-              });
-            }}
-            style={{
-              width:"100%",padding:"13px",borderRadius:14,border:"none",cursor:"pointer",
-              background: canSave ? "linear-gradient(145deg,#2dd4bf,#14b8a6)" : ink(0.07),
-              color: canSave ? "#fff" : FAINT,
-              fontSize:14,fontWeight:800,
-              boxShadow: canSave ? "0 4px 16px rgba(45,212,191,0.35)" : "none",
-            }}
-          >Зберегти</button>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={onClose} style={{
+            flex:1,padding:"11px",borderRadius:12,border:"none",cursor:"pointer",
+            background:ink(0.07),color:DIM,fontSize:13,fontWeight:700,fontFamily:"inherit",
+          }}>Скасувати</button>
+          <button disabled={!canSave} onClick={()=>{
+            if (!canSave) return;
+            onConfirm({
+              id:`personal-${Date.now()}`,
+              day, date:data.dateStr,
+              startMin, durMin,
+              name:title.trim(),
+              type:"personal", status:"personal", tsc:"",
+              wasAdminBlocked:!!data.slot?.adminBlocked,
+              createdAt:Date.now(), createdBy:"admin",
+            });
+          }} style={{
+            flex:2,padding:"11px",borderRadius:12,border:"none",
+            cursor:canSave?"pointer":"default",fontFamily:"inherit",
+            background:canSave?"linear-gradient(135deg,#2dd4bf,#14b8a6)":ink(0.07),
+            color:canSave?"#fff":FAINT,fontSize:13,fontWeight:800,
+            boxShadow:canSave?"0 4px 16px rgba(45,212,191,0.35)":"none",transition:"all .2s",
+          }}>✓ Зберегти</button>
         </div>
       </div>
     </div>
