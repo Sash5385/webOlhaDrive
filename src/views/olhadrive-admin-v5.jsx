@@ -725,6 +725,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 
   useLayoutEffect(() => { computeVRange(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [bubbleData, setBubbleData] = useState(null);
+  const [addSlotPos, setAddSlotPos] = useState(null); // { dateStr, startMin, clientX, clientY }
   const [formData, setFormData] = useState(null);
   const [createSlotData, setCreateSlotData] = useState(null); // {day, startMin}
   const [localSelectedBooking, setLocalSelectedBooking] = useState(null);
@@ -1138,6 +1139,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const [vipSlotModal, setVipSlotModal] = useState(null);
   const [slotOptions, setSlotOptions] = useState(null); // { dateStr, time, slot }
   const [personalEventData, setPersonalEventData] = useState(null); // { dateStr, time }
+  const [longTapMenu, setLongTapMenu] = useState(null); // { dateStr, startMin, clientX, clientY }
   const [personalEventView, setPersonalEventView] = useState(null); // booking for viewing
 
   const isStickySlot = (dateStr, time) => {
@@ -1333,8 +1335,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   emptyHoldPosRef.current = { startY: e.clientY, day: absDay, startMin: minute, dateStr: dateStrCol };
                   emptyHoldTimerRef.current = setTimeout(() => {
                     if (!emptyHoldPosRef.current) return;
-                    // Утримання → bubble для нового букінгу
-                    setBubbleData({ day: absDay, startMin: minute, clientX: e.clientX, clientY: e.clientY, freeSnap: true });
+                    setLongTapMenu({ dateStr: dateStrCol, startMin: minute, clientX: e.clientX, clientY: e.clientY });
                     emptyHoldPosRef.current = null;
                   }, 480);
                 }}
@@ -1869,6 +1870,75 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             width:"100%",padding:"9px 12px",borderRadius:10,border:"none",cursor:"pointer",
             background:"rgba(45,212,191,0.15)",
             color:"#2dd4bf",fontSize:12,fontWeight:800,marginTop:6,
+          }}>📌 Особиста подія</button>
+        </div>
+      </div>
+    )}
+
+    {addSlotPos && (
+      <div onClick={()=>setAddSlotPos(null)} style={{position:"fixed",inset:0,zIndex:150}}>
+        <div onClick={e=>e.stopPropagation()} style={{
+          position:"absolute",
+          top: Math.max(60, Math.min(addSlotPos.clientY - 50, window.innerHeight - 110)),
+          left: Math.max(10, Math.min(addSlotPos.clientX - 10, window.innerWidth - 180)),
+          width:168,
+          background:`linear-gradient(135deg,${SURFACE},${BG_DEEP})`,
+          borderRadius:14, padding:"10px 12px",
+          boxShadow:`0 8px 32px ${shade(0.65)},inset 1px 1px 0 ${glow(0.08)}`,
+          border:`1px solid ${BORDER}`
+        }}>
+          <div style={{fontSize:18,fontWeight:900,color:TEXT,marginBottom:8,letterSpacing:0.5}}>
+            {fmtTime(addSlotPos.startMin)}
+          </div>
+          <button onClick={()=>{
+            const hh = String(Math.floor(addSlotPos.startMin/60)).padStart(2,'0');
+            const mm = String(addSlotPos.startMin%60).padStart(2,'0');
+            update(ref(db, `timeslots/${addSlotPos.dateStr}/slot${hh}${mm}`), {
+              available: true, time: `${hh}:${mm}`
+            }).catch(()=>{});
+            setAddSlotPos(null);
+          }} style={{
+            width:"100%",padding:"9px 12px",borderRadius:10,border:"none",cursor:"pointer",
+            background:`linear-gradient(165deg,rgba(99,211,120,0.9),rgba(34,197,94,0.85))`,
+            color:"#fff",fontSize:12,fontWeight:800,
+            boxShadow:`0 4px 12px rgba(99,211,120,0.35)`,
+          }}>+ Вільний слот</button>
+        </div>
+      </div>
+    )}
+
+    {longTapMenu && (
+      <div onClick={()=>setLongTapMenu(null)} style={{position:"fixed",inset:"0 0 80px 0",zIndex:100}}>
+        <div onClick={e=>e.stopPropagation()} style={{
+          position:"absolute",
+          top: Math.max(60, Math.min(longTapMenu.clientY - 50, window.innerHeight - 120)),
+          left: Math.max(10, Math.min(longTapMenu.clientX - 10, window.innerWidth - 180)),
+          width:168,
+          background:`linear-gradient(135deg,${SURFACE},${BG_DEEP})`,
+          borderRadius:14, padding:"10px 12px",
+          boxShadow:`0 8px 32px ${shade(0.65)},inset 1px 1px 0 ${glow(0.08)}`,
+          border:`1px solid ${BORDER}`
+        }}>
+          <div style={{fontSize:18,fontWeight:900,color:TEXT,marginBottom:8,letterSpacing:0.5}}>
+            {fmtTime(longTapMenu.startMin)}
+          </div>
+          <button onClick={()=>{
+            setAddSlotPos({ dateStr: longTapMenu.dateStr, startMin: longTapMenu.startMin, clientX: longTapMenu.clientX, clientY: longTapMenu.clientY });
+            setLongTapMenu(null);
+          }} style={{
+            width:"100%",padding:"9px 12px",borderRadius:10,border:"none",cursor:"pointer",
+            background:`linear-gradient(165deg,rgba(99,211,120,0.9),rgba(34,197,94,0.85))`,
+            color:"#fff",fontSize:12,fontWeight:800,
+            boxShadow:`0 4px 12px rgba(99,211,120,0.35)`,
+          }}>🕐 Вільний слот</button>
+          <button onClick={()=>{
+            setPersonalEventData({ dateStr: longTapMenu.dateStr, time: fmtTime(longTapMenu.startMin) });
+            setLongTapMenu(null);
+          }} style={{
+            marginTop:8, width:"100%",padding:"9px 12px",borderRadius:10,cursor:"pointer",
+            background:"rgba(45,212,191,0.12)",
+            color:"#2dd4bf",fontSize:12,fontWeight:800,
+            border:"1px solid rgba(45,212,191,0.3)",
           }}>📌 Особиста подія</button>
         </div>
       </div>
