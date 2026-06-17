@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { ref, onValue, update, push, remove, get } from "firebase/database";
+import { ref, onValue, off, update, push, remove } from "firebase/database";
 import { db } from "../firebase";
 
 import { ThemeContext } from "../theme.js";
@@ -398,6 +398,8 @@ export default function StudentsView() {
 .btn span{font-size:9px;font-weight:700;letter-spacing:.2px}
 .icon3d{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;position:relative;overflow:hidden;flex-shrink:0;box-shadow:-2px 4px 10px rgba(0,0,0,0.5),inset 1px 1px 0 rgba(255,255,255,0.25),inset -1px -1px 0 rgba(0,0,0,0.3)}
 .icon3d::before{content:'';position:absolute;top:0;right:0;width:60%;height:50%;background:radial-gradient(ellipse at top right,rgba(255,255,255,0.4) 0%,transparent 70%);pointer-events:none}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.sheet{animation:sheetUp .24s cubic-bezier(.32,.72,0,1) both}
 `;
   const [students,   setStudents]   = useState([]);
   const [expanded,   setExpanded]   = useState(new Set());
@@ -465,35 +467,6 @@ export default function StudentsView() {
     setExpanded(e => new Set([...e, newRef.key]));
   };
 
-  const [restoring, setRestoring] = useState(false);
-  const restoreFromBookings = async () => {
-    setRestoring(true);
-    try {
-      const snap = await get(ref(db, "bookings"));
-      const data = snap.val() || {};
-      const existingIds = new Set(students.map(s => s.id));
-      const updates = {};
-      Object.entries(data).forEach(([uid, userBkgs]) => {
-        if (existingIds.has(uid)) return;
-        const bkgs = Object.values(userBkgs || {});
-        if (!bkgs.length) return;
-        const bk = bkgs[0];
-        const name = bk.studentName || bk.name || "";
-        const phone = bk.phone || "";
-        if (!name && !phone) return;
-        updates[`users/${uid}`] = { name, phone, hours: 0, blocked: false, isVip: false };
-      });
-      const count = Object.keys(updates).length;
-      if (count === 0) { alert("Всі студенти вже є в списку або букінги порожні"); return; }
-      await update(ref(db, "/"), updates);
-      alert(`Відновлено ${count} студентів`);
-    } catch(e) {
-      alert("Помилка: " + e.message);
-    } finally {
-      setRestoring(false);
-    }
-  };
-
   const q = search.toLowerCase();
   const list = students
     .filter(s =>
@@ -508,34 +481,9 @@ export default function StudentsView() {
       <div style={{display:"flex",flexDirection:"column",gap:7,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
         {/* header */}
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:2}}>
+        <div style={{display:"flex",alignItems:"center",marginBottom:2}}>
           <div style={{fontSize:15,fontWeight:800,color:TEXT}}>Учні</div>
-          <div style={{display:"flex",gap:6}}>
-            <button onClick={restoreFromBookings} disabled={restoring} style={{
-              display:"flex",alignItems:"center",gap:5,
-              background:`linear-gradient(145deg,#5b9bff,#2563eb)`,
-              border:"none",borderRadius:10,padding:"7px 13px",cursor:"pointer",fontSize:12,fontWeight:700,color:"#fff",boxShadow:SO,opacity:restoring?0.6:1,
-            }}>
-              {restoring ? "…" : "↩ Букінги"}
-            </button>
-            <button onClick={()=>setShowNew(v=>!v)} style={{
-              display:"flex",alignItems:"center",gap:5,
-              background:showNew?`linear-gradient(145deg,${SURF_HI},${SURFACE})`:`linear-gradient(145deg,${ACC_HI},${ACCENT})`,
-              border:"none",borderRadius:10,padding:"7px 13px",cursor:"pointer",
-              fontSize:13,fontWeight:700,color:"#fff",boxShadow:SO,
-            }}>
-              <span style={{fontSize:16,lineHeight:1}}>{showNew?"×":"+"}</span>
-              {showNew ? "Закрити" : "Учень"}
-            </button>
-          </div>
         </div>
-
-        {/* new student form */}
-        {showNew && (
-          <div className="ex">
-            <NewStudentForm onSave={createStudent} onCancel={()=>setShowNew(false)}/>
-          </div>
-        )}
 
         {/* search */}
         <div style={{background:BG_DEEP,borderRadius:11,boxShadow:SI,padding:"3px 11px",display:"flex",alignItems:"center",gap:7}}>
@@ -581,6 +529,39 @@ export default function StudentsView() {
           </div>
         )}
       </div>
+
+      {/* ── FAB +Учень ── */}
+      <button onClick={()=>setShowNew(true)} aria-label="Додати учня" style={{
+        position:"fixed",right:18,bottom:104,zIndex:45,
+        display:"flex",alignItems:"center",gap:6,
+        background:`linear-gradient(145deg,#5b9bff,#2563eb)`,
+        border:"none",borderRadius:999,padding:"13px 18px",cursor:"pointer",
+        fontSize:14,fontWeight:800,color:"#fff",fontFamily:"inherit",
+        boxShadow:`0 6px 18px rgba(37,99,235,0.45)`,
+      }}>
+        <span style={{fontSize:20,lineHeight:1,marginTop:-2}}>+</span>
+        Учень
+      </button>
+
+      {/* ── Bottom sheet: новий учень ── */}
+      {showNew && (
+        <div onClick={()=>setShowNew(false)} style={{
+          position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.6)",
+          display:"flex",alignItems:"flex-end",justifyContent:"center",
+          backdropFilter:"blur(8px)",
+        }}>
+          <div className="sheet" onClick={e=>e.stopPropagation()} style={{
+            width:"100%",maxWidth:480,background:BG_DEEP,
+            borderRadius:"24px 24px 0 0",
+            boxShadow:`0 -2px 0 ${BORDER}, 0 -16px 50px rgba(0,0,0,0.6)`,
+            padding:"12px 16px calc(20px + env(safe-area-inset-bottom))",
+            maxHeight:"88vh",overflowY:"auto",
+          }}>
+            <div style={{width:38,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 14px"}}/>
+            <NewStudentForm onSave={createStudent} onCancel={()=>setShowNew(false)}/>
+          </div>
+        </div>
+      )}
     </>
   );
 }
