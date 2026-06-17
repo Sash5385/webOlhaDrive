@@ -1,5 +1,10 @@
 # CLAUDE.md — Production Rules для OlhaDrive
 
+## Домени проекту
+
+- **admin.olhadrive.kiev.ua** — адмін-панель (`webolhadrive`)
+- **olhadrive.kiev.ua** — клієнтський застосунок (`webolhadriveclient`)
+
 ## Рабочий процесс (важно читать в начале каждой сессии)
 
 Все изменения и новые функции сначала разрабатываются и тестируются в репозиториях:
