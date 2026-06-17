@@ -485,8 +485,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const dragEndedRef = useRef(false);
   const swipeRef = useRef(null);
   const gridWrapRef = useRef(null);
-  const sumRowRef   = useRef(null);
-  const sumInnerRef = useRef(null);
   const vRangeRef   = useRef({ s: Math.max(0, PAST_DAYS - VBUF), e: PAST_DAYS + 30 });
   const [vRange, setVRange] = useState({ s: Math.max(0, PAST_DAYS - VBUF), e: PAST_DAYS + 30 });
   const xVisibleRef = useRef(false);
@@ -855,7 +853,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           const dy = e.clientY - swipeRef.current.startY;
           if (Math.abs(dx) > Math.abs(dy) * 0.7 && Math.abs(dx) > 6) {
             gridWrapRef.current.style.transform = `translateX(${dx}px)`;
-            if(sumInnerRef.current) sumInnerRef.current.style.transform = `translateX(${dx}px)`;
           }
         }
       }
@@ -1003,7 +1000,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       if (gridWrapRef.current) {
         gridWrapRef.current.style.transition = "none";
         gridWrapRef.current.style.transform = "";
-        if(sumInnerRef.current) sumInnerRef.current.style.transform = "";
       }
     };
     const onResize = () => { setWindowW(window.innerWidth); setWindowH(window.innerHeight); };
@@ -1734,48 +1730,41 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 );
               })}
               </div>
+
+              {/* Daily income sum — sticky bottom, moves with column natively (no scroll lag) */}
+              {(() => {
+                const daySum = bookings
+                  .filter(b=>b.day===absDay && b.type!=="block" && b.type!=="vip-slot" && b.type!=="personal" && b.status!=="cancelled" && b.status!=="noshow")
+                  .reduce((s,b)=>{
+                    const svc=(settings.services||[]).find(sv=>sv.id===b.serviceId||sv.id===b.svcId);
+                    const price = svc
+                      ? Math.round((svc.price/svc.duration)*b.durMin)
+                      : b.price && b.durationHours
+                        ? Math.round((b.price/(b.durationHours*60))*b.durMin)
+                        : (b.price||0);
+                    return s+price;
+                  },0);
+                if (daySum<=0) return null;
+                return (
+                  <div style={{
+                    position:"sticky", bottom:0, zIndex:11,
+                    flexShrink:0, marginTop:4,
+                    background: panel(SURF_HI, SURFACE),
+                    borderRadius:7,
+                    border:`1px solid ${BORDER}`,
+                    boxShadow: SO,
+                    padding:"2px 4px",
+                    textAlign:"center",
+                    fontSize:10, fontWeight:800,
+                    color:GREEN, letterSpacing:0.2,
+                    lineHeight:1.4,
+                  }}>{daySum.toLocaleString("uk")}₴</div>
+                );
+              })()}
             </div>
             );
           })}
           {(N_DAYS-1-vRange.e)>0 && <div style={{width:(N_DAYS-1-vRange.e)*(COL_W+4)-4, flexShrink:0}}/>}
-          </div>
-
-          {/* ── Daily income sums — sticky bottom, scrolls naturally with gridRef ── */}
-          <div ref={sumInnerRef} style={{display:"flex", position:"sticky", bottom:0, zIndex:5, padding:"3px 0 5px"}}>
-            {vRange.s > 0 && <div style={{width:vRange.s*(COL_W+4), flexShrink:0}}/>}
-            {days.slice(vRange.s, vRange.e+1).map((day,_i)=>{
-              const colIdx = vRange.s + _i;
-              const absDay2 = dayOffset + colIdx;
-              const daySum = bookings
-                .filter(b=>b.day===absDay2 && b.type!=="block" && b.type!=="vip-slot" && b.type!=="personal" && b.status!=="cancelled" && b.status!=="noshow")
-                .reduce((s,b)=>{
-                  const svc=(settings.services||[]).find(sv=>sv.id===b.serviceId||sv.id===b.svcId);
-                  const price = svc
-                    ? Math.round((svc.price/svc.duration)*b.durMin)
-                    : b.price && b.durationHours
-                      ? Math.round((b.price/(b.durationHours*60))*b.durMin)
-                      : (b.price||0);
-                  return s+price;
-                },0);
-              return (
-                <div key={absDay2} style={{width:COL_W, flexShrink:0, marginRight:colIdx<N_DAYS-1?4:0}}>
-                  {daySum>0 ? (
-                    <div style={{
-                      background: panel(SURF_HI, SURFACE),
-                      borderRadius:7,
-                      border:`1px solid ${BORDER}`,
-                      boxShadow: SO,
-                      padding:"2px 4px",
-                      textAlign:"center",
-                      fontSize:10, fontWeight:800,
-                      color:GREEN, letterSpacing:0.2,
-                      lineHeight:1.4,
-                    }}>{daySum.toLocaleString("uk")}₴</div>
-                  ) : null}
-                </div>
-              );
-            })}
-            {(N_DAYS-1-vRange.e)>0 && <div style={{width:(N_DAYS-1-vRange.e)*(COL_W+4)-4, flexShrink:0}}/>}
           </div>
         </div>
 
