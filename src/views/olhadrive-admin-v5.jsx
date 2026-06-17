@@ -1623,7 +1623,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         const lines = [
                           { text: fName, w: 800, c: "#fff" },
                           ...(lName ? [{ text: lName, w: 700, c: "rgba(255,255,255,0.85)" }] : []),
-                          { text: b.type==="school" ? "Автошкола" : "Приватний", w: 600, c: "rgba(255,255,255,0.6)" },
+                          { text: b.type==="school" ? (b.tsc || "Автошкола") : "Приватний", w: 600, c: "rgba(255,255,255,0.6)" },
                           ...(price > 0 ? [{ text: `${price}₴`, w: 900, c: priceColor }] : []),
                         ];
                         const maxFs = Math.min(11, Math.floor(COL_W / 5.5));
