@@ -157,6 +157,21 @@ function NewStudentForm({ onSave, onCancel }) {
           <div style={{position:"absolute",top:2,left:d.isVip?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
         </div>
       </div>
+      {/* Без ліміту інтервалу між записами */}
+      <div onClick={()=>setD(x=>({...x,noIntervalLimit:!x.noIntervalLimit}))} style={{
+        display:"flex",alignItems:"center",justifyContent:"space-between",
+        padding:"10px 12px",borderRadius:10,cursor:"pointer",
+        background:d.noIntervalLimit?"rgba(234,179,8,0.10)":BG_DEEP,
+        border:d.noIntervalLimit?"1px solid rgba(234,179,8,0.35)":`1px solid ${BORDER}`,
+      }}>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:d.noIntervalLimit?"#eab308":TEXT}}>Без ліміту частоти записів</div>
+          <div style={{fontSize:10,color:FAINT,marginTop:2}}>{d.noIntervalLimit?"Ігнорує обмеження мінімального інтервалу":"Застосовується загальне обмеження"}</div>
+        </div>
+        <div style={{width:36,height:20,borderRadius:10,position:"relative",background:d.noIntervalLimit?"linear-gradient(145deg,#eab308,#ca8a04)":"rgba(255,255,255,0.08)",transition:"background .2s",flexShrink:0}}>
+          <div style={{position:"absolute",top:2,left:d.noIntervalLimit?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
+        </div>
+      </div>
       <div>
         <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Нотатки</div>
         <textarea value={d.notes} onChange={e=>setD(x=>({...x,notes:e.target.value}))} rows={2}

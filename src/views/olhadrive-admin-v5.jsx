@@ -367,6 +367,7 @@ const DEFAULT_SETTINGS = {
   studentCanCancel: true,
   bookCutoffHours: 2,       // min hours before slot for booking
   calendarOpenDays: 30,     // how many days ahead visible to students
+  minBookingIntervalDays: 0, // min days between any two bookings (0 = disabled)
   // sticky time
   stickyTime: "both",       // before | after | both
   // notifications display
@@ -1633,15 +1634,26 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                       {!isBlock && !isVipSlot && !isPersonal && height >= 12 && (() => {
                         const [fName, ...lParts] = b.name.split(' ');
                         const lName = lParts.join(' ');
-                        const priceColor = b.surcharge ? GOLD : "rgba(255,255,255,0.9)";
-                        const lines = [
-                          { text: fName, w: 800, c: "#fff" },
-                          ...(lName ? [{ text: lName, w: 700, c: "rgba(255,255,255,0.85)" }] : []),
-                          { text: b.type==="school" ? "Автошкола" : "Приватний", w: 600, c: "rgba(255,255,255,0.6)" },
-                          ...(price > 0 ? [{ text: `${price}₴`, w: 900, c: priceColor }] : []),
+                        const priceColor = b.surcharge ? GOLD : ink(0.9);
+                        const typeLabel = b.type==="school" ? (b.tsc || "Автошкола") : "Приватний";
+                        const priceText = price > 0 ? `${price}₴` : "";
+                        const allLines = [
+                          { text: fName,     w: 800, c: ink(0.95) },
+                          ...(lName          ? [{ text: lName,     w: 700, c: ink(0.80) }] : []),
+                          { text: typeLabel, w: 600, c: ink(0.58) },
+                          ...(priceText      ? [{ text: priceText, w: 900, c: priceColor }] : []),
                         ];
-                        const maxFs = Math.min(11, Math.floor(COL_W / 5.5));
-                        const fs = Math.max(6, Math.min(maxFs, Math.floor((height - 6) / (lines.length * 1.25))));
+                        const availH = height - 6;
+                        const availW = COL_W - 8;
+                        const maxLinesByH = Math.max(1, Math.floor(availH / 10));
+                        const maxLinesByW = COL_W < 44 ? 2 : COL_W < 58 ? 3 : 4;
+                        const maxLines = Math.min(maxLinesByH, maxLinesByW);
+                        const lines = allLines.slice(0, maxLines);
+                        const fsByW = Math.max(6, Math.min(...lines.map(ln =>
+                          Math.floor(availW / (ln.text.length * 0.65))
+                        )));
+                        const fsByH = Math.max(6, Math.floor(availH / (lines.length * 1.4)));
+                        const fs = Math.min(11, fsByW, fsByH);
                         return (
                           <div style={{
                             position:"absolute", top:2, left:2, right:2, bottom:2,
@@ -1653,7 +1665,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                               <div key={i} style={{
                                 fontSize: fs, fontWeight: ln.w, color: ln.c,
                                 lineHeight: 1.2, textAlign:"center",
-                                whiteSpace:"normal", wordBreak:"break-word", overflowWrap:"anywhere",
+                                whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis",
                                 width:"100%",
                                 textShadow:"none",
                               }}>{ln.text}</div>
