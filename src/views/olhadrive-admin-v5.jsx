@@ -497,6 +497,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const [shineId, setShineId] = useState(null);
   const slotHoldTimerRef = useRef(null);
   const slotHoldFiredRef = useRef(false);
+  const slotOptionsOpenedRef = useRef(0);
   const [openSlots, setOpenSlots] = useState({}); // { "2025-06-01": ["07:00","08:00",...] }
   const [viewingSlots, setViewingSlots] = useState({});
   const [genLoadingDays, setGenLoadingDays] = useState(new Set());
@@ -1422,6 +1423,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                       slotHoldTimerRef.current = setTimeout(()=>{
                         slotHoldFiredRef.current = true;
                         navigator.vibrate?.(40);
+                        slotOptionsOpenedRef.current = Date.now();
                         setSlotOptions({ dateStr: dateStrCol, time, slot });
                       }, 600);
                     }}
@@ -1984,7 +1986,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           nearbySlots.push({ min: m, label: fmtTime(m) });
       }
       return (
-      <div onClick={()=>setSlotOptions(null)} style={{
+      <div onClick={()=>{ if(Date.now()-slotOptionsOpenedRef.current>350) setSlotOptions(null); }} style={{
         position:"fixed",inset:0,zIndex:200,
         background:shade(SCRIM),
         backdropFilter:"blur(8px)",
