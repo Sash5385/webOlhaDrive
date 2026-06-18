@@ -483,6 +483,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const holdTimerRef = useRef(null);
   const pendingDragRef = useRef(null);
   const dragEndedRef = useRef(false);
+  const resizeReadyRef = useRef(null);
   const swipeRef = useRef(null);
   const gridWrapRef = useRef(null);
   const vRangeRef   = useRef({ s: Math.max(0, PAST_DAYS - VBUF), e: PAST_DAYS + 30 });
@@ -820,6 +821,11 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     if (mode === "top" || mode === "bottom") {
       navigator.vibrate?.(6);
       pendingDragRef.current = dragData;
+      holdTimerRef.current = setTimeout(() => {
+        if (!pendingDragRef.current || pendingDragRef.current.id !== b.id) return;
+        resizeReadyRef.current = b.id;
+        navigator.vibrate?.([15, 20, 35]);
+      }, 500);
       return;
     }
 
@@ -861,11 +867,18 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
         const pd = pendingDragRef.current;
         const moved = Math.hypot(e.clientY - pd.startClientY, e.clientX - pd.startClientX);
         if (pd.mode === "top" || pd.mode === "bottom" || pd.isBlock) {
-          // Resize або блок: активуємо drag відразу при русі >4px
+          if ((pd.mode === "top" || pd.mode === "bottom") && resizeReadyRef.current !== pd.id) {
+            if (moved > 8) {
+              clearTimeout(holdTimerRef.current);
+              pendingDragRef.current = null;
+            }
+            return;
+          }
           if (moved > 4) {
             clearTimeout(holdTimerRef.current);
             dragRef.current = {...pd};
             pendingDragRef.current = null;
+            resizeReadyRef.current = null;
             setDragId(pd.id);
             navigator.vibrate?.(18);
           }
@@ -985,6 +998,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       pendingDragRef.current = null;
       setHoldId(null);
       quickCancelRef.current = null;
+      resizeReadyRef.current = null;
       xVisibleRef.current = false;
       setQuickCancelId(null);
       if (wasDragging) {
@@ -2542,6 +2556,7 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
   const [timeVal,    setTimeVal]    = useState(null);
   const [svcId,      setSvcId]      = useState(null);
   const [note,       setNote]       = useState("");
+  const [tsc,        setTsc]        = useState("");
   const [students,   setStudents]   = useState([]);
 
   useEffect(()=>{
@@ -2550,7 +2565,7 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
       const d = snap.val() || {};
       setStudents(Object.entries(d).map(([uid, u]) => {
         const p = u.profile || {};
-        return { id:uid, name:p.name||u.name||"Учень", phone:p.phone||u.phone||"" };
+        return { id:uid, name:p.name||u.name||"Учень", phone:p.phone||u.phone||"", tsc:p.tsc||u.tsc||"" };
       }).filter(s=>s.name!=="Учень"||s.phone));
     });
     return () => off(r, "value", handler);
@@ -2562,7 +2577,7 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
       setTimeVal(snapped?.value ?? timeItems[0]?.value ?? null);
       setDateOffset(Math.max(0, data.day??0));
       setSearch(""); setSelStudent(null); setPhone("");
-      setNewName(""); setNewPhone(""); setNote("");
+      setNewName(""); setNewPhone(""); setNote(""); setTsc("");
       setSvcId(null);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2613,7 +2628,7 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
       day:dateOffset, date:dateStr, startMin:timeVal, durMin:selSvc.duration,
       name:finalName, phone:finalPhone, serviceId:selSvc.id,
       type:selSvc.type||"private", status:"confirmed",
-      tsc:"", hoursDone:0, categoryId:null, isVipOnly:false,
+      tsc: selSvc?.type==="school" ? tsc.trim() : "", hoursDone:0, categoryId:null, isVipOnly:false,
       userId: (!isNewStudent && selStudent?.id) ? selStudent.id : null,
       ...(note.trim() && { note:note.trim() }),
     });
@@ -2682,7 +2697,7 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
                     </div>
                   )}
                   {filtered.slice(0,6).map(s=>(
-                    <div key={s.id} onClick={()=>{setSelStudent(s);setPhone(s.phone);setSearch("");}}
+                    <div key={s.id} onClick={()=>{setSelStudent(s);setPhone(s.phone);setSearch("");if(s.tsc)setTsc(s.tsc);}}
                       style={{display:"flex",alignItems:"center",justifyContent:"space-between",
                         padding:"9px 13px",cursor:"pointer",borderBottom:`1px solid ${BORDER}`,background:BG_DEEP}}>
                       <div style={{fontSize:13,fontWeight:700,color:TEXT}}>{s.name}</div>
@@ -2778,6 +2793,25 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
               })}
             </div>
           </div>
+
+          {/* ТСЦ — тільки для послуг автошколи */}
+          {selSvc?.type === "school" && (
+            <div>
+              <SL>ТСЦ (центр)</SL>
+              <input
+                type="text"
+                placeholder="Наприклад: ТСЦ Оболонь"
+                value={tsc}
+                onChange={e=>setTsc(e.target.value)}
+                style={{
+                  width:"100%", padding:"10px 13px", borderRadius:12,
+                  border:`1.5px solid ${BORDER}`,
+                  background:SURFACE_LO, color:TEXT, fontSize:13,
+                  outline:"none", boxSizing:"border-box", fontFamily:"inherit",
+                }}
+              />
+            </div>
+          )}
 
           {/* ЦІНА PREVIEW */}
           {selSvc && (
