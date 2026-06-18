@@ -3,7 +3,7 @@ import { ref, update, get, onValue, off, remove } from "firebase/database";
 import { db } from "../firebase";
 
 import { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, SO, SI, ThemeContext } from "../theme.js";
-import { useFX, panel, SCRIM } from "../ui.jsx";
+import { useFX, panel, SCRIM, Modal as UIModal } from "../ui.jsx";
 // local aliases for legacy names used in this file
 const SURFACE_HI = SURF_HI;
 const SURFACE_LO = SURF_LO;
@@ -2345,18 +2345,12 @@ function BookingModal({ booking, onClose, onAction, settings }) {
   const IcoChat  = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
 
   return (
-    <div onClick={onClose} style={{
-      position:"fixed", inset:0, zIndex:100,
-      background:shade(SCRIM), backdropFilter:"blur(8px)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width:300,
-        background:BG_DEEP,
-        borderRadius:20,
-        boxShadow:`0 2px 0 ${c}55, 0 20px 60px ${shade(0.6)}, inset 0 1px 0 ${glow(0.06)}`,
-        overflow:"hidden",
-      }}>
+    <UIModal open={!!booking} onClose={onClose} sheet={false} size={300} title="Деталі запису" pad={false}
+      footer={<>
+        <button onClick={() => onAction("call", booking)} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"11px",borderRadius:14,border:"none",cursor:"pointer",background:"linear-gradient(145deg,#34d399,#059669)",boxShadow:"0 4px 14px rgba(52,211,153,0.35)",color:"#fff",fontSize:13,fontWeight:800,fontFamily:"inherit"}}>{IcoPhone} Дзвонити</button>
+        {booking.status === "pending" && <button onClick={() => { onAction("confirm", booking); onClose(); }} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"11px",borderRadius:14,border:"none",cursor:"pointer",background:"linear-gradient(145deg,#9ee07a,#5fb83d)",color:"#fff",fontSize:13,fontWeight:800,fontFamily:"inherit"}}>✓ Підтвердити</button>}
+        <button onClick={() => onAction("chat", booking)} style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,padding:"11px",borderRadius:14,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURFACE_HI},${SURFACE})`,boxShadow:SHADOW_OUT,color:BLUE,fontSize:13,fontWeight:800,fontFamily:"inherit"}}>{IcoChat} Чат</button>
+      </>}>
 
         {/* Student row */}
         <div style={{
@@ -2432,34 +2426,6 @@ function BookingModal({ booking, onClose, onAction, settings }) {
           </div>
         )}
 
-        {/* Action buttons */}
-        <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, padding:"12px 12px 14px"}}>
-          <button onClick={() => onAction("call", booking)} style={{
-            display:"flex", alignItems:"center", justifyContent:"center", gap:7,
-            padding:"11px", borderRadius:14, border:"none", cursor:"pointer",
-            background:"linear-gradient(145deg,#34d399,#059669)",
-            boxShadow:"0 4px 14px rgba(52,211,153,0.35)",
-            color:"#fff", fontSize:13, fontWeight:800,
-          }}>{IcoPhone} Дзвонити</button>
-          <button onClick={() => onAction("chat", booking)} style={{
-            display:"flex", alignItems:"center", justifyContent:"center", gap:7,
-            padding:"11px", borderRadius:14, border:"none", cursor:"pointer",
-            background:`linear-gradient(145deg,${SURFACE_HI},${SURFACE})`,
-            boxShadow:SHADOW_OUT,
-            color:BLUE, fontSize:13, fontWeight:800,
-          }}>{IcoChat} Чат</button>
-        </div>
-
-        {/* Confirm button (only for pending bookings) */}
-        {booking.status === "pending" && (
-          <button onClick={() => { onAction("confirm", booking); onClose(); }} style={{
-            width:"100%", padding:"11px", border:"none", cursor:"pointer",
-            background:"linear-gradient(145deg,#9ee07a,#5fb83d)",
-            borderTop:`1px solid ${ink(0.06)}`,
-            color:"#fff", fontSize:13, fontWeight:800,
-          }}>✓ Підтвердити</button>
-        )}
-
         {/* Cancel link */}
         <button onClick={() => { onAction("cancel", booking); onClose(); }} style={{
           width:"100%", padding:"9px", border:"none", cursor:"pointer",
@@ -2467,8 +2433,7 @@ function BookingModal({ booking, onClose, onAction, settings }) {
           color:"rgba(248,113,113,0.7)", fontSize:11, fontWeight:600,
         }}>Скасувати запис</button>
 
-      </div>
-    </div>
+    </UIModal>
   );
 }
 
@@ -2638,40 +2603,27 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
       textTransform:"uppercase",marginBottom:7}}>{children}</div>
   );
 
+  const handleConfirm = () => {
+    if(!canConfirm) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const d = new Date(today); d.setDate(d.getDate() + dateOffset);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    onConfirm({
+      id:`b-${Date.now()}`,
+      day:dateOffset, date:dateStr, startMin:timeVal, durMin:selSvc.duration,
+      name:finalName, phone:finalPhone, serviceId:selSvc.id,
+      type:selSvc.type||"private", status:"confirmed",
+      tsc:"", hoursDone:0, categoryId:null, isVipOnly:false,
+      userId: (!isNewStudent && selStudent?.id) ? selStudent.id : null,
+      ...(note.trim() && { note:note.trim() }),
+    });
+    onClose();
+  };
+
   return (
-    <div onClick={onClose} style={{
-      position:"fixed",inset:0,background:shade(SCRIM),zIndex:200,
-      display:"flex",alignItems:"flex-end",justifyContent:"center",
-      backdropFilter:"blur(8px)",
-    }}>
-      <div onClick={e=>e.stopPropagation()} style={{
-        width:"100%",maxWidth:480,background:BG_DEEP,
-        borderRadius:"24px 24px 0 0",
-        boxShadow:`0 -2px 0 rgba(99,211,120,0.25), 0 -16px 60px ${shade(0.6)}`,
-        maxHeight:"90vh",overflowY:"auto",
-        display:"flex",flexDirection:"column",
-      }}>
-
-        {/* ── Заголовок ── */}
-        <div style={{
-          padding:"12px 14px 10px",
-          borderBottom:`1px solid ${BORDER}`,
-          flexShrink:0,position:"sticky",top:0,background:BG_DEEP,zIndex:1,
-        }}>
-          <div style={{width:36,height:4,borderRadius:2,background:ink(0.18),margin:"0 auto 10px"}}/>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <div style={{fontSize:16,fontWeight:900,color:TEXT,letterSpacing:-0.3}}>Новий запис</div>
-            <button onClick={onClose} style={{
-              background:ink(0.06),border:"none",cursor:"pointer",
-              width:30,height:30,borderRadius:15,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              color:TEXT_FAINT,fontSize:18,lineHeight:1,
-            }}>×</button>
-          </div>
-        </div>
-
-        {/* ── Тіло ── */}
-        <div style={{padding:"14px 14px 36px",display:"flex",flexDirection:"column",gap:16}}>
+    <UIModal open={!!data} onClose={onClose} sheet size="md" maxH="90vh" title="Новий запис"
+      footer={<button disabled={!canConfirm} onClick={handleConfirm} style={{flex:1,width:"100%",padding:"14px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",background:canConfirm?`linear-gradient(160deg,${GREEN},#4ade80)`:`${SURFACE_LO}`,color:canConfirm?"#fff":TEXT_FAINT,fontSize:15,fontWeight:800,letterSpacing:0.2,boxShadow:canConfirm?`0 6px 20px ${GREEN}55`:SHADOW_OUT,transition:"all .2s"}}>✓ Записати</button>}>
+      <div style={{display:"flex",flexDirection:"column",gap:16}}>
 
           {/* УЧЕНЬ */}
           <div>
@@ -2858,34 +2810,8 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
             }}
           />
 
-          {/* CONFIRM */}
-          <button disabled={!canConfirm} onClick={()=>{
-            if(!canConfirm) return;
-            const today = new Date(); today.setHours(0,0,0,0);
-            const d = new Date(today); d.setDate(d.getDate() + dateOffset);
-            const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            onConfirm({
-              id:`b-${Date.now()}`,
-              day:dateOffset, date:dateStr, startMin:timeVal, durMin:selSvc.duration,
-              name:finalName, phone:finalPhone, serviceId:selSvc.id,
-              type:selSvc.type||"private", status:"confirmed",
-              tsc:"", hoursDone:0, categoryId:null, isVipOnly:false,
-              userId: (!isNewStudent && selStudent?.id) ? selStudent.id : null,
-              ...(note.trim() && { note:note.trim() }),
-            });
-            onClose();
-          }} style={{
-            width:"100%",padding:"14px",borderRadius:16,border:"none",cursor:"pointer",
-            background:canConfirm?`linear-gradient(160deg,${GREEN},#4ade80)`:`${SURFACE_LO}`,
-            color:canConfirm?"#fff":TEXT_FAINT,
-            fontSize:15,fontWeight:800,letterSpacing:0.2,
-            boxShadow:canConfirm?`0 6px 20px ${GREEN}55`:SHADOW_OUT,
-            transition:"all .2s",
-          }}>✓ Записати</button>
-
-        </div>
       </div>
-    </div>
+    </UIModal>
   );
 }
 
