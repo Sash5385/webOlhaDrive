@@ -161,6 +161,8 @@ body, html, #root { margin:0; padding:0; }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
+.schedule-scroll::-webkit-scrollbar { height: 30px; }
+.schedule-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 8px; }
 input[type="range"] { accent-color: ${ACCENT}; }
 .tabular { font-variant-numeric: tabular-nums; }
 .drum-scroll::-webkit-scrollbar { display: none; }
@@ -1267,6 +1269,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             computeVRange();
           }}
           onContextMenu={e=>e.preventDefault()}
+          className="schedule-scroll"
           style={{flex:1, overflowX:"auto", overflowY:"auto", touchAction:"pan-x pan-y", WebkitOverflowScrolling:"touch", userSelect:"none", WebkitUserSelect:"none"}}
         >
           <div ref={gridWrapRef} style={{display:"flex", paddingTop:2}}>
