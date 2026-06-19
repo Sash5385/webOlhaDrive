@@ -18,6 +18,7 @@ const ChatsView     = lazy(()=>import("./views/olhadrive-chats"))
 const TemplatesView = lazy(()=>import("./views/olhadrive-templates"))
 const StatsView     = lazy(()=>import("./views/olhadrive-stats"))
 const QueueView     = lazy(()=>import("./views/olhadrive-queue"))
+const JournalView   = lazy(()=>import("./views/olhadrive-journal"))
 
 const Loader = () => (
   <ThemeContext.Consumer>
@@ -91,6 +92,9 @@ const makeTabIcons = (inactiveGr) => ({
   queue: (s,active) => <I3 s={s} r={s*0.3} gr={active?"linear-gradient(165deg,#c084fc,#7c3aed)":inactiveGr}>
     <svg width={s*.55} height={s*.55} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
   </I3>,
+  journal: (s,active) => <I3 s={s} r={s*0.3} gr={active?"linear-gradient(165deg,#22d3ee,#0891b2)":inactiveGr}>
+    <svg width={s*.55} height={s*.55} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="3" width="13" height="18" rx="2"/><line x1="8" y1="8" x2="13" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/><line x1="8" y1="16" x2="11" y2="16"/><circle cx="18" cy="17" r="3.5"/><path d="M18 15.5V17l1 1"/></svg>
+  </I3>,
 });
 
 const TabIcons = makeTabIcons(INACTIVE_DARK);
@@ -105,18 +109,19 @@ const TAB_IDS = [
   { id:"chats",     lk:"nav.chats",     badge:null },
   { id:"templates", lk:"nav.templates", badge:null },
   { id:"stats",     lk:"nav.stats",     badge:null },
+  { id:"journal",   lk:"nav.journal",   badge:null },
   { id:"settings",  lk:"nav.settings",  badge:null },
 ];
 
 const TAB_TITLES = {
   schedule:"Розклад", bookings:"Букінги", queue:"Черга", students:"Учні",
   services:"Послуги", chats:"Чати", templates:"Шаблони",
-  stats:"Статистика", settings:"Налаштування"
+  stats:"Статистика", journal:"Журнал", settings:"Налаштування"
 };
 
 
 // ─── BOTTOM NAV ──────────────────────────────────────────────────
-function BottomNav({ active, onChange, settings, chatUnread }) {
+function BottomNav({ active, onChange, settings, chatUnread, journalUnread }) {
   const lang = useContext(LangContext);
   const tl = createT(lang);
   const theme = useContext(ThemeContext);
@@ -165,13 +170,13 @@ function BottomNav({ active, onChange, settings, chatUnread }) {
               position:"relative"
             }}>
               {tabIcons[t.id]?.(34,active===t.id)}
-              {(t.id === 'chats' ? chatUnread : t.badge) > 0 && (
+              {(t.id === 'chats' ? chatUnread : t.id === 'journal' ? journalUnread : t.badge) > 0 && (
                 <div style={{
                   position:"absolute",top:-4,right:-4,
                   background:theme.ACCENT,color:"#fff",borderRadius:10,
                   padding:"1px 5px",fontSize:9,fontWeight:800,
                   boxShadow:`0 0 8px ${theme.ACCENT}88`,lineHeight:1.4
-                }}>{t.id === 'chats' ? chatUnread : t.badge}</div>
+                }}>{t.id === 'chats' ? chatUnread : t.id === 'journal' ? journalUnread : t.badge}</div>
               )}
             </div>
             <span style={{fontSize:9,fontWeight:700,color:active===t.id?theme.ACCENT:labelInactive,whiteSpace:"nowrap"}}>{tl(t.lk)}</span>
@@ -246,6 +251,7 @@ const INSTRUCTIONS = {
   chats:    "Листування з учнями. Клік на контакт — розгортає чат. ⚡ — швидкі відповіді.",
   templates:"Шаблони повідомлень. ➤ надіслати · ✏️ редагувати · 🗑 видалити.",
   stats:    "Статистика уроків, доходу і учнів за обраний період.",
+  journal:  "Журнал змін графіку. Нові записи, скасування, перенесення — з датою та часом події.",
   settings: "Налаштування розкладу, послуг, черги та автоматичних повідомлень.",
 };
 
@@ -362,7 +368,7 @@ const DEFAULT_SETTINGS = {
   theme:"light", language:"uk", queueAutoFifo:true, queueBroadcast:false, queueManual:false,
   studentCanReschedule:true, studentCanCancel:true, bookCutoffHours:2, calendarOpenDays:30,
   stickyTime:"both", notifLocation:"topbar", showCompleteBtn:true,
-  navTabs:["schedule","bookings","students","services","chats","templates","stats","settings"],
+  navTabs:["schedule","bookings","students","services","chats","templates","stats","journal","settings"],
   autoReminders:[
     {enabled:true,  hoursBefore:24},
     {enabled:false, hoursBefore:2},
@@ -393,6 +399,7 @@ function ViewRenderer({ tab, settings, setSettings, bookings, setBookings, onSlo
   if (tab === "chats")     return <ChatsView/>;
   if (tab === "templates") return <TemplatesView/>;
   if (tab === "stats")     return <StatsView/>;
+  if (tab === "journal")   return <JournalView/>;
   return null;
 }
 
@@ -422,7 +429,8 @@ export default function App() {
   const [bookings,   setBookings] = useState(INITIAL_BOOKINGS);
   const [selectedBooking,  setSelectedBooking]  = useState(null);
   const [newBookingData,   setNewBookingData]    = useState(null);
-  const [chatUnread, setChatUnread] = useState(0);
+  const [chatUnread,    setChatUnread]    = useState(0);
+  const [journalUnread, setJournalUnread] = useState(0);
 
   const switchTab = t => {
     setTab(t);
@@ -432,8 +440,16 @@ export default function App() {
       setChatUnread(0);
       if ('clearAppBadge' in navigator) navigator.clearAppBadge();
     }
+    if (t === 'journal') setJournalUnread(0);
   };
   const toggleInfo = key => setOpenInfos(s => ({...s, [key]: !s[key]}));
+
+  // Initialize journal read timestamp on first ever app load
+  useEffect(() => {
+    if (!localStorage.getItem("journal_read_at")) {
+      localStorage.setItem("journal_read_at", Date.now().toString());
+    }
+  }, []);
 
   // Tab navigation via custom event (from child components)
   useEffect(() => {
@@ -521,7 +537,9 @@ export default function App() {
           // services come exclusively from admin_data/services listener — do not overwrite here
           categories:  Array.isArray(d.categories)  ? d.categories  : s.categories,
           weekends:    Array.isArray(d.weekends)     ? d.weekends    : s.weekends,
-          navTabs:      Array.isArray(d.navTabs)       ? d.navTabs      : s.navTabs,
+          navTabs: Array.isArray(d.navTabs)
+          ? (d.navTabs.includes('journal') ? d.navTabs : [...d.navTabs, 'journal'])
+          : s.navTabs,
           autoReminders: Array.isArray(d.autoReminders) ? d.autoReminders : s.autoReminders,
           weekSchedule:  Array.isArray(d.weekSchedule)  ? d.weekSchedule  : s.weekSchedule,
           dateOverrides: Array.isArray(d.dateOverrides)  ? d.dateOverrides : s.dateOverrides,
@@ -587,6 +605,17 @@ export default function App() {
     }
     return onValue(ref(db, "bookings"), snap => {
       const data = snap.val();
+      const readAt = parseInt(localStorage.getItem("journal_read_at") || "0", 10);
+      if (readAt && data) {
+        let cnt = 0;
+        Object.values(data).forEach(u => { if (u) Object.values(u).forEach(b => {
+          if (!b) return;
+          if (b.createdAt     && b.createdAt     > readAt) cnt++;
+          if (b.cancelledAt   && b.cancelledAt   > readAt) cnt++;
+          if (b.rescheduledAt && b.rescheduledAt > readAt) cnt++;
+        }); });
+        setJournalUnread(cnt);
+      }
       if (!data) return;
       const all = [];
       Object.entries(data).forEach(([uid, userBkgs]) => {
@@ -825,7 +854,7 @@ const pendingDeletesRef = React.useRef(new Set());
             <ViewRenderer tab={tab} settings={settings} setSettings={setSettings} bookings={bookings} setBookings={handleSetBookings} onSlotClick={setSelectedBooking} onEmptySlotClick={setNewBookingData} openInfos={openInfos} toggleInfo={toggleInfo} activeDragIds={activeDragIds} navTo={switchTab} slotExistsRef={slotExistsRef} openSlotsRef={openSlotsRef}/>
           </Suspense>
         </div>
-        <BottomNav active={tab} onChange={switchTab} settings={settings} chatUnread={chatUnread}/>
+        <BottomNav active={tab} onChange={switchTab} settings={settings} chatUnread={chatUnread} journalUnread={journalUnread}/>
       </div>
       {needRefresh && (
         <div className={`update-banner${isUpdating ? ' update-banner--loading' : ''}`} onClick={updateServiceWorker}>
