@@ -260,6 +260,20 @@ firebase deploy --only hosting
 git checkout dev
 ```
 
+## Правило автодеплоя
+
+**После каждого фикса** — обязательно:
+
+```bash
+git checkout main
+git pull --rebase origin main
+git merge <feature-branch> --no-edit
+git push origin main
+git checkout <feature-branch>
+```
+
+Деплой запускается автоматически через GitHub Actions при каждом push в `main`.
+
 **Перед великою зміною — окрема гілка від dev:**
 
 ```bash
