@@ -596,6 +596,9 @@ export default function App() {
         language:        settings.language        ?? "uk",
         theme:           settings.theme           ?? "light",
         customBlocks:    settings.customBlocks    ?? [],
+        showCompleteBtn:      settings.showCompleteBtn      ?? true,
+        stickyTimeEnabled:    settings.stickyTimeEnabled    ?? true,
+        minBookingIntervalDays: settings.minBookingIntervalDays ?? 0,
       }).catch(() => {});
     }, 800);
   // eslint-disable-next-line react-hooks/exhaustive-deps
