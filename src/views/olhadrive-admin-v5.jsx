@@ -458,9 +458,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const { glow, shade, ink } = useFX();
   const GRID_H  = isLight ? "rgba(0,0,0,0.09)"   : "rgba(255,255,255,0.07)";
   const GRID_HH = isLight ? "rgba(0,0,0,0.04)"   : "rgba(255,255,255,0.025)";
-  const FREE_BG     = isLight ? "rgba(0,0,0,0.05)"       : "rgba(255,255,255,0.05)";
-  const FREE_BD     = isLight ? BORDER                    : "rgba(255,255,255,0.12)";
-  const FREE_CLR    = isLight ? DIM                       : "rgba(255,255,255,0.35)";
+  const FREE_BG     = isLight ? "rgba(58,140,30,0.10)"   : "rgba(99,211,120,0.10)";
+  const FREE_BD     = isLight ? "rgba(58,140,30,0.38)"   : "rgba(99,211,120,0.38)";
+  const FREE_CLR    = isLight ? "rgba(58,140,30,0.85)"   : "rgba(99,211,120,0.78)";
   const STICKY_BG   = isLight ? "rgba(58,140,30,0.16)"   : "rgba(99,211,120,0.15)";
   const STICKY_BD   = isLight ? "rgba(58,140,30,0.65)"   : "rgba(99,211,120,0.45)";
   const STICKY_CLR  = isLight ? "rgba(58,140,30,0.92)"   : "rgba(99,211,120,0.9)";
@@ -1440,7 +1440,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                       position:"absolute", left:0, right:0,
                       top: minToPx(startMin) + 1,
                       height: slotHeightMin * PX_PER_MIN - 2,
-                      opacity: isSticky ? (isLight ? 0.8 : 0.5) : (isLight ? 0.55 : 0.22),
+                      opacity: isSticky ? (isLight ? 0.9 : 0.9) : (isLight ? 0.85 : 0.85),
                       background: bg,
                       border: `1.5px solid ${borderColor}`,
                       borderRadius:8, cursor:"pointer", zIndex:1,
