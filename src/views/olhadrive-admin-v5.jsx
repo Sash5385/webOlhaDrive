@@ -1637,13 +1637,14 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                       {!isBlock && !isVipSlot && !isPersonal && height >= 12 && (() => {
                         const [fName, ...lParts] = b.name.split(' ');
                         const lName = lParts.join(' ');
-                        const priceColor = b.surcharge ? GOLD : ink(0.9);
+                        const si = a => isLight ? ink(a) : `rgba(0,0,0,${a})`;
+                        const priceColor = b.surcharge ? GOLD : si(0.9);
                         const typeLabel = b.type==="school" ? (b.tsc || "Автошкола") : "Приватний";
                         const priceText = price > 0 ? `${price}₴` : "";
                         const allLines = [
-                          { text: fName,     w: 800, c: ink(0.95) },
-                          ...(lName          ? [{ text: lName,     w: 700, c: ink(0.80) }] : []),
-                          { text: typeLabel, w: 600, c: ink(0.58) },
+                          { text: fName,     w: 800, c: si(0.95) },
+                          ...(lName          ? [{ text: lName,     w: 700, c: si(0.80) }] : []),
+                          { text: typeLabel, w: 600, c: si(0.58) },
                           ...(priceText      ? [{ text: priceText, w: 900, c: priceColor }] : []),
                         ];
                         const availH = height - 6;
