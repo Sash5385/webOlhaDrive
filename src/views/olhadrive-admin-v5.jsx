@@ -59,8 +59,8 @@ body, html, #root { margin:0; padding:0; }
 }
 .slot-base:active { cursor: grabbing; }
 .slot-colored {
-  background: linear-gradient(155deg, color-mix(in srgb, var(--c) 55%, #1a1a1a) 0%, color-mix(in srgb, var(--c) 35%, #000000) 100%);
-  border: 1px solid color-mix(in srgb, var(--c) 55%, #000000);
+  background: linear-gradient(155deg, color-mix(in srgb, var(--c) 38%, #1a1a1a) 0%, color-mix(in srgb, var(--c) 20%, #000000) 100%);
+  border: 1px solid color-mix(in srgb, var(--c) 35%, #000000);
   box-shadow:
     -2px 5px 14px rgba(0,0,0,0.5),
     inset 1px 1px 0 rgba(255,255,255,0.18),
