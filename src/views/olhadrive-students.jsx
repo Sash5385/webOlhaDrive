@@ -537,7 +537,7 @@ export default function StudentsView() {
   return (
     <>
       <style>{css}</style>
-      <div style={{display:"flex",flexDirection:"column",gap:7,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
+      <div style={{display:"flex",flexDirection:"column",gap:8,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
         {/* header */}
         <div style={{display:"flex",alignItems:"center",marginBottom:2}}>
