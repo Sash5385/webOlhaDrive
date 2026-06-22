@@ -2234,6 +2234,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             serviceId: b.serviceId, serviceType: b.type, type: b.type,
             status: b.status, tsc: b.tsc || "", hours: b.hoursDone || 0,
             createdAt: Date.now(), createdBy: "admin",
+            ...(b.price && { price: b.price }),
             ...(b.note && { note: b.note }),
           };
           const uid = b.userId || "admin";
@@ -2706,6 +2707,7 @@ function NewBookingModal({ data, onClose, onConfirm, settings, bookings = [] }) 
       day:dateOffset, date:dateStr, startMin:timeVal, durMin:selSvc.duration,
       name:finalName, phone:finalPhone, serviceId:selSvc.id,
       type:selSvc.type||"private", status:"confirmed",
+      price: selSvc.price || 0,
       tsc: selSvc?.type==="school" ? tsc.trim() : "", hoursDone:0, categoryId:null, isVipOnly:false,
       userId: (!isNewStudent && selStudent?.id) ? selStudent.id : null,
       ...(note.trim() && { note:note.trim() }),
@@ -3491,6 +3493,7 @@ export default function App() {
         serviceId: b.serviceId, serviceType: b.type, type: b.type,
         status: b.status, tsc: b.tsc || "", hours: b.hoursDone || 0,
         createdAt: Date.now(), createdBy: "admin",
+        ...(b.price && { price: b.price }),
         ...(b.note && { note: b.note }),
       };
       const uid = b.userId || "admin";
