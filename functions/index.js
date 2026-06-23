@@ -21,15 +21,22 @@ async function pushStudent(uid, title, body, data = {}) {
   const token = snap.val();
   if (!token) return;
   const link = data.url || "https://olhadrive.kiev.ua/cabinet";
-  await admin.messaging().send({
-    token,
-    notification: { title, body },
-    data: Object.fromEntries(Object.entries({ url: link, ...data }).map(([k,v]) => [k, String(v)])),
-    webpush: {
-      notification: { icon: "/favicon.svg" },
-      fcmOptions: { link },
-    },
-  }).catch(() => {});
+  try {
+    await admin.messaging().send({
+      token,
+      notification: { title, body },
+      data: Object.fromEntries(Object.entries({ url: link, ...data }).map(([k,v]) => [k, String(v)])),
+      webpush: {
+        notification: { icon: "/favicon.svg" },
+        fcmOptions: { link },
+      },
+    });
+  } catch (e) {
+    if (e.code === "messaging/registration-token-not-registered" ||
+        e.code === "messaging/invalid-registration-token") {
+      await db.ref(`users/${uid}/fcmTokens/web/token`).remove().catch(() => {});
+    }
+  }
 }
 
 // Хелпер: запросити наступного в черзі для слота
@@ -122,6 +129,7 @@ exports.onBookingChanged = onValueWritten(
     if (before === null && after) {
       const slotUpd = buildSlotUpdates(after, false);
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
+      await db.ref(`activeStudents/${uid}`).set(true).catch(() => {});
       if (after.cancelledBy !== "admin") {
         console.log(`onBookingChanged: new booking uid=${uid}`);
         await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`);
@@ -161,6 +169,13 @@ exports.onBookingChanged = onValueWritten(
       });
       await saveNotification(uid, "❌ Урок скасовано", `${date} о ${time}`, "booking_cancelled");
       if (date !== "—" && time !== "—") await inviteNextInQueue(`${date}_${time}`).catch(() => {});
+      return;
+    }
+
+    // Студент підтвердив присутність
+    if (after.studentConfirmed && !before.studentConfirmed) {
+      console.log(`onBookingChanged: student confirmed uid=${uid}`);
+      await pushAdmin("✅ Підтвердив присутність", `${name} · ${date} о ${time}`);
       return;
     }
 
@@ -314,11 +329,8 @@ exports.unlockVipSlots = onSchedule("every 1 hours", async () => {
   if (!unlocked) return;
   await db.ref().update(updates);
 
-  const usersSnap = await db.ref("users").get();
-  const usersData = usersSnap.val() || {};
-  const tokens = Object.values(usersData)
-    .filter(u => u.fcmTokens?.web?.token && !u.isVip)
-    .map(u => u.fcmTokens.web.token);
+  const tokenSnap = await db.ref("studentTokens").get();
+  const tokens = Object.values(tokenSnap.val() || {}).filter(Boolean);
   if (!tokens.length) return;
 
   for (let i = 0; i < tokens.length; i += 500) {
@@ -336,16 +348,16 @@ exports.unlockVipSlots = onSchedule("every 1 hours", async () => {
   }
 });
 
-// Слот у найближчі 10 днів звільнився (скасування/розблокування) → пуш всім хто записувався за місяць
+// Слот у найближчі 10 днів звільнився → ставимо в чергу, пуш через 5 хв
 exports.onSlotFreed = onValueWritten(
   { ref: "timeslots/{date}/{slotId}", region: "europe-west1" },
   async (event) => {
     const before = event.data.before?.val();
     const after  = event.data.after?.val();
 
-    // Тільки перехід available: false → true
-    if (!before || before.available !== false) return;
-    if (!after  || after.available  !== true)  return;
+    // Перехід до available: true (звільнився або з'явився новий слот)
+    if (before?.available === true) return; // вже був вільний — не дублюємо
+    if (!after || after.available !== true) return;
 
     const { date } = event.params;
 
@@ -359,30 +371,65 @@ exports.onSlotFreed = onValueWritten(
     const time = after.time;
     if (!time) return;
 
-    // Клієнти що записувались за останній місяць
-    const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const bookingsSnap = await db.ref("bookings").get();
-    const bookingsData = bookingsSnap.val() || {};
+    const slotKey = `${date}_${time}`;
+    // Записуємо в чергу — пуш відправиться через 5 хв якщо слот ще вільний
+    await db.ref(`slotFreedQueue/${slotKey}`).set({
+      date, time, sendAfter: Date.now() + 5 * 60 * 1000,
+    }).catch(() => {});
+  }
+);
 
-    const notifyUids = new Set();
-    for (const [uid, userBookings] of Object.entries(bookingsData)) {
-      if (!userBookings || typeof userBookings !== "object") continue;
-      for (const booking of Object.values(userBookings)) {
-        if ((booking.createdAt || 0) >= oneMonthAgo) {
-          notifyUids.add(uid);
-          break;
-        }
+// Кожну хвилину: відправляємо відкладені пуші про звільнені слоти
+exports.flushSlotFreedQueue = onSchedule(
+  { schedule: "every 1 minutes", region: "europe-west1" },
+  async () => {
+    // Тихі години 23:00–6:00 за Києвом
+    const kyivHour = parseInt(new Date().toLocaleString("uk", { timeZone: "Europe/Kiev", hour: "2-digit", hour12: false }), 10);
+    if (kyivHour >= 23 || kyivHour < 6) return;
+
+    const snap = await db.ref("slotFreedQueue").get();
+    if (!snap.exists()) return;
+    const now = Date.now();
+
+    const tasks = [];
+    snap.forEach(entry => {
+      const val = entry.val();
+      if (val && val.sendAfter <= now) tasks.push({ key: entry.key, ...val });
+    });
+    if (!tasks.length) return;
+
+    // Студенти що хоч раз бронювали (індекс, замість повного скану bookings)
+    const activeSnap = await db.ref("activeStudents").get();
+    const notifyUids = activeSnap.exists() ? Object.keys(activeSnap.val()) : [];
+    if (!notifyUids.length) return;
+
+    // Rate-limit: не слати одному студенту частіше ніж раз на 30 хвилин
+    const lastNotifSnap = await db.ref("lastSlotNotif").get();
+    const lastNotifData = lastNotifSnap.val() || {};
+    const RATE_LIMIT_MS = 30 * 60 * 1000;
+
+    for (const { key, date, time } of tasks) {
+      await db.ref(`slotFreedQueue/${key}`).remove().catch(() => {});
+
+      // Перевіряємо що слот ще вільний
+      const slotId = `slot${time.replace(":", "")}`;
+      const slotSnap = await db.ref(`timeslots/${date}/${slotId}`).get();
+      const slot = slotSnap.val();
+      if (!slot || slot.available !== true) continue;
+
+      const slotDate = new Date(date + "T00:00:00");
+      const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
+      const title = "🚗 Звільнився слот!";
+      const body  = `${dateFormatted} о ${time} — є вільне місце`;
+      const url   = `https://olhadrive.kiev.ua/cabinet?date=${date}`;
+
+      for (const uid of notifyUids) {
+        if (lastNotifData[uid] && now - lastNotifData[uid] < RATE_LIMIT_MS) continue;
+        await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
+        await saveNotification(uid, title, body, "slot_freed").catch(() => {});
+        lastNotifData[uid] = now;
+        await db.ref(`lastSlotNotif/${uid}`).set(now).catch(() => {});
       }
-    }
-
-    const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
-    const title = "🚗 Звільнився слот!";
-    const body  = `${dateFormatted} о ${time} — є вільне місце`;
-    const url   = `https://olhadrive.kiev.ua/cabinet?date=${date}`;
-
-    for (const uid of notifyUids) {
-      await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
-      await saveNotification(uid, title, body, "slot_freed").catch(() => {});
     }
   }
 );
@@ -410,5 +457,64 @@ exports.flushRescheduleQueue = onSchedule(
       await db.ref(`rescheduleQueue/${uid}/${bookingId}`).remove();
       console.log(`flushRescheduleQueue: sent to uid=${uid} bookingId=${bookingId}`);
     }));
+  }
+);
+
+// Щогодини: нагадування за 24 год і за 2 год до уроку
+exports.sendLessonReminders = onSchedule(
+  { schedule: "every 1 hours", region: "europe-west1" },
+  async () => {
+    const now = Date.now();
+    const kyivHour = parseInt(
+      new Date().toLocaleString("uk", { timeZone: "Europe/Kiev", hour: "2-digit", hour12: false }), 10
+    );
+
+    const activeSnap = await db.ref("activeStudents").get();
+    if (!activeSnap.exists()) return;
+    const uids = Object.keys(activeSnap.val());
+
+    const sentSnap = await db.ref("sentReminders").get();
+    const sentData = sentSnap.val() || {};
+    const updates = {};
+
+    for (const uid of uids) {
+      const bSnap = await db.ref(`bookings/${uid}`).get();
+      if (!bSnap.exists()) continue;
+
+      for (const [bookingId, b] of Object.entries(bSnap.val())) {
+        if (!b || b.status === "cancelled" || b.cancelledBy) continue;
+        if (!b.date || !b.time) continue;
+
+        const lessonMs = new Date(`${b.date}T${b.time}:00+03:00`).getTime();
+        const diffMs = lessonMs - now;
+        if (diffMs <= 0) continue;
+
+        const sent = sentData[uid]?.[bookingId] || {};
+        const dateFmt = new Date(b.date + "T00:00:00").toLocaleDateString("uk", {
+          day: "numeric", month: "long", weekday: "short",
+        });
+
+        // 24г нагадування (вікно 23–25г, не в тихі години)
+        if (!sent.r24 && !(kyivHour >= 23 || kyivHour < 6)
+            && diffMs >= 23 * 3600000 && diffMs <= 25 * 3600000) {
+          await pushStudent(uid, "🚗 Нагадування про урок", `Завтра о ${b.time} — ${dateFmt}`, {
+            url: "https://olhadrive.kiev.ua/cabinet/bookings",
+          });
+          await saveNotification(uid, "🚗 Нагадування про урок", `Завтра о ${b.time} — ${dateFmt}`, "reminder");
+          updates[`sentReminders/${uid}/${bookingId}/r24`] = true;
+        }
+
+        // 2г нагадування (вікно 1.5–2.5г, завжди)
+        if (!sent.r2 && diffMs >= 90 * 60000 && diffMs <= 150 * 60000) {
+          await pushStudent(uid, "⏰ Урок через 2 години", `о ${b.time} — ${dateFmt}`, {
+            url: "https://olhadrive.kiev.ua/cabinet/bookings",
+          });
+          await saveNotification(uid, "⏰ Урок через 2 години", `о ${b.time} — ${dateFmt}`, "reminder");
+          updates[`sentReminders/${uid}/${bookingId}/r2`] = true;
+        }
+      }
+    }
+
+    if (Object.keys(updates).length) await db.ref("/").update(updates).catch(() => {});
   }
 );
