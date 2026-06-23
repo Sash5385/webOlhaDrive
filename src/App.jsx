@@ -144,7 +144,7 @@ function BottomNav({ active, onChange, settings, chatUnread, journalUnread }) {
     <div style={{
       flexShrink:0,
       padding:"0 3px 10px",
-      background:"transparent",
+      background: isKava ? "#d4ba96" : "transparent",
       zIndex:50,
       pointerEvents:"none",
     }}>
