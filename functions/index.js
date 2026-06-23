@@ -122,6 +122,7 @@ exports.onBookingChanged = onValueWritten(
     if (before === null && after) {
       const slotUpd = buildSlotUpdates(after, false);
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
+      await db.ref(`activeStudents/${uid}`).set(true).catch(() => {});
       if (after.cancelledBy !== "admin") {
         console.log(`onBookingChanged: new booking uid=${uid}`);
         await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`);
@@ -336,16 +337,16 @@ exports.unlockVipSlots = onSchedule("every 1 hours", async () => {
   }
 });
 
-// Слот у найближчі 10 днів звільнився (скасування/розблокування) → пуш всім хто записувався за місяць
+// Слот у найближчі 10 днів звільнився → ставимо в чергу, пуш через 5 хв
 exports.onSlotFreed = onValueWritten(
   { ref: "timeslots/{date}/{slotId}", region: "europe-west1" },
   async (event) => {
     const before = event.data.before?.val();
     const after  = event.data.after?.val();
 
-    // Тільки перехід available: false → true
-    if (!before || before.available !== false) return;
-    if (!after  || after.available  !== true)  return;
+    // Перехід до available: true (звільнився або з'явився новий слот)
+    if (before?.available === true) return; // вже був вільний — не дублюємо
+    if (!after || after.available !== true) return;
 
     const { date } = event.params;
 
@@ -359,30 +360,65 @@ exports.onSlotFreed = onValueWritten(
     const time = after.time;
     if (!time) return;
 
-    // Клієнти що записувались за останній місяць
-    const oneMonthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    const bookingsSnap = await db.ref("bookings").get();
-    const bookingsData = bookingsSnap.val() || {};
+    const slotKey = `${date}_${time}`;
+    // Записуємо в чергу — пуш відправиться через 5 хв якщо слот ще вільний
+    await db.ref(`slotFreedQueue/${slotKey}`).set({
+      date, time, sendAfter: Date.now() + 5 * 60 * 1000,
+    }).catch(() => {});
+  }
+);
 
-    const notifyUids = new Set();
-    for (const [uid, userBookings] of Object.entries(bookingsData)) {
-      if (!userBookings || typeof userBookings !== "object") continue;
-      for (const booking of Object.values(userBookings)) {
-        if ((booking.createdAt || 0) >= oneMonthAgo) {
-          notifyUids.add(uid);
-          break;
-        }
+// Кожну хвилину: відправляємо відкладені пуші про звільнені слоти
+exports.flushSlotFreedQueue = onSchedule(
+  { schedule: "every 1 minutes", region: "europe-west1" },
+  async () => {
+    // Тихі години 23:00–6:00 за Києвом
+    const kyivHour = parseInt(new Date().toLocaleString("uk", { timeZone: "Europe/Kiev", hour: "2-digit", hour12: false }), 10);
+    if (kyivHour >= 23 || kyivHour < 6) return;
+
+    const snap = await db.ref("slotFreedQueue").get();
+    if (!snap.exists()) return;
+    const now = Date.now();
+
+    const tasks = [];
+    snap.forEach(entry => {
+      const val = entry.val();
+      if (val && val.sendAfter <= now) tasks.push({ key: entry.key, ...val });
+    });
+    if (!tasks.length) return;
+
+    // Студенти що хоч раз бронювали (індекс, замість повного скану bookings)
+    const activeSnap = await db.ref("activeStudents").get();
+    const notifyUids = activeSnap.exists() ? Object.keys(activeSnap.val()) : [];
+    if (!notifyUids.length) return;
+
+    // Rate-limit: не слати одному студенту частіше ніж раз на 30 хвилин
+    const lastNotifSnap = await db.ref("lastSlotNotif").get();
+    const lastNotifData = lastNotifSnap.val() || {};
+    const RATE_LIMIT_MS = 30 * 60 * 1000;
+
+    for (const { key, date, time } of tasks) {
+      await db.ref(`slotFreedQueue/${key}`).remove().catch(() => {});
+
+      // Перевіряємо що слот ще вільний
+      const slotId = `slot${time.replace(":", "")}`;
+      const slotSnap = await db.ref(`timeslots/${date}/${slotId}`).get();
+      const slot = slotSnap.val();
+      if (!slot || slot.available !== true) continue;
+
+      const slotDate = new Date(date + "T00:00:00");
+      const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
+      const title = "🚗 Звільнився слот!";
+      const body  = `${dateFormatted} о ${time} — є вільне місце`;
+      const url   = `https://olhadrive.kiev.ua/cabinet?date=${date}`;
+
+      for (const uid of notifyUids) {
+        if (lastNotifData[uid] && now - lastNotifData[uid] < RATE_LIMIT_MS) continue;
+        await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
+        await saveNotification(uid, title, body, "slot_freed").catch(() => {});
+        lastNotifData[uid] = now;
+        await db.ref(`lastSlotNotif/${uid}`).set(now).catch(() => {});
       }
-    }
-
-    const dateFormatted = slotDate.toLocaleDateString("uk", { day: "numeric", month: "long", weekday: "short" });
-    const title = "🚗 Звільнився слот!";
-    const body  = `${dateFormatted} о ${time} — є вільне місце`;
-    const url   = `https://olhadrive.kiev.ua/cabinet?date=${date}`;
-
-    for (const uid of notifyUids) {
-      await pushStudent(uid, title, body, { url, date, time }).catch(() => {});
-      await saveNotification(uid, title, body, "slot_freed").catch(() => {});
     }
   }
 );
