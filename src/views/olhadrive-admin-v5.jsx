@@ -1321,6 +1321,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     setLocalSelectedBooking(null);
   };
   const [blockModal, setBlockModal] = useState(null); // {id, day, startMin, durMin}
+  const [blockModalClosing, setBlockModalClosing] = useState(false);
 
   const handleBlock = ({ day, startMin }) => {
     setBookings(bs=>[...bs,{
@@ -1340,6 +1341,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   };
 
   const [vipSlotModal, setVipSlotModal] = useState(null);
+  const [vipSlotModalClosing, setVipSlotModalClosing] = useState(false);
   const [slotOptions, setSlotOptions] = useState(null); // { dateStr, time, startTime, slot }
   const [slotClosing, setSlotClosing] = useState(false);
   const [personalEventData, setPersonalEventData] = useState(null); // { dateStr, time }
@@ -2048,66 +2050,82 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       onAction={handleAction} settings={settings}/>
 
     {/* ── Модалка блокування ── */}
-    {blockModal && (
-      <div onClick={()=>setBlockModal(null)} style={{
-        position:"fixed",inset:0,zIndex:200,background:shade(SCRIM),
-        display:"flex",alignItems:"flex-end",justifyContent:"center",
-        backdropFilter:"blur(12px)"
-      }}>
-        <div onClick={e=>e.stopPropagation()} style={{
-          width:"100%",maxWidth:480,background:BG_DEEP,
-          borderRadius:"28px 28px 0 0",
-          boxShadow:`0 -2px 0 ${glow(0.08)}, 0 -16px 60px ${shade(0.6)}`,
-          display:"flex",flexDirection:"column",overflow:"hidden",
-        }}>
-          {/* Hero */}
-          <div style={{
-            padding:"14px 16px 18px",
-            background:`repeating-linear-gradient(45deg,${STRIPE_A},${STRIPE_A} 8px,${STRIPE_B} 8px,${STRIPE_B} 16px)`,
-            position:"relative",
+    {(blockModal || blockModalClosing) && (() => {
+      const _closeBlock = () => setBlockModalClosing(true);
+      return (
+        <>
+          <style>{`
+            @keyframes _bl-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+            @keyframes _bl-down{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+            @keyframes _bl-bg-in{from{opacity:0}to{opacity:1}}
+            @keyframes _bl-bg-out{from{opacity:1}to{opacity:0}}
+          `}</style>
+          <div onClick={blockModalClosing ? undefined : _closeBlock} style={{
+            position:"fixed",inset:0,zIndex:200,background:shade(0.55),
+            display:"flex",alignItems:"flex-end",justifyContent:"center",
+            backdropFilter:"blur(8px)",
+            animation: blockModalClosing ? `_bl-bg-out 0.26s ease-in forwards` : `_bl-bg-in 0.2s ease-out`,
           }}>
-            <div style={{width:38,height:4,borderRadius:2,background:ink(0.18),margin:"0 auto 14px"}}/>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
-              <div style={{
-                width:50,height:50,borderRadius:25,flexShrink:0,
-                background:ink(0.06),border:`1.5px solid ${ink(0.12)}`,
-                display:"flex",alignItems:"center",justifyContent:"center",
+            <div onClick={e=>e.stopPropagation()}
+              onAnimationEnd={blockModalClosing ? ()=>{ setBlockModalClosing(false); setBlockModal(null); } : undefined}
+              style={{
+                width:"100%",maxWidth:480,background:BG_DEEP,
+                borderRadius:"24px 24px 0 0",
+                boxShadow:`0 -2px 0 ${glow(0.08)}, 0 -16px 60px ${shade(0.6)}`,
+                display:"flex",flexDirection:"column",overflow:"hidden",
+                pointerEvents: blockModalClosing ? "none" : undefined,
+                animation: blockModalClosing ? `_bl-down 0.26s ease-in forwards` : `_bl-up 0.38s cubic-bezier(0.34,1.56,0.64,1)`,
               }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ink(0.4)} strokeWidth="2" strokeLinecap="round">
-                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-              </div>
-              <div>
-                <div style={{fontSize:18,fontWeight:900,color:ink(0.55),letterSpacing:-0.4}}>Заблоковано</div>
-                <div style={{fontSize:12,color:ink(0.35),marginTop:3}}>
-                  {getDayInfo(blockModal.day).fullLabel} · {fmtTime(blockModal.startMin)} · {fmtDur(blockModal.durMin)}
+              {/* Hero */}
+              <div style={{
+                padding:"14px 16px 18px",
+                background:`repeating-linear-gradient(45deg,${STRIPE_A},${STRIPE_A} 8px,${STRIPE_B} 8px,${STRIPE_B} 16px)`,
+                position:"relative",
+              }}>
+                <div style={{width:38,height:4,borderRadius:2,background:ink(0.18),margin:"0 auto 14px"}}/>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{
+                    width:50,height:50,borderRadius:25,flexShrink:0,
+                    background:ink(0.06),border:`1.5px solid ${ink(0.12)}`,
+                    display:"flex",alignItems:"center",justifyContent:"center",
+                  }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ink(0.4)} strokeWidth="2" strokeLinecap="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{fontSize:18,fontWeight:900,color:ink(0.55),letterSpacing:-0.4}}>Заблоковано</div>
+                    <div style={{fontSize:12,color:ink(0.35),marginTop:3}}>
+                      {getDayInfo(blockModal.day).fullLabel} · {fmtTime(blockModal.startMin)} · {fmtDur(blockModal.durMin)}
+                    </div>
+                  </div>
                 </div>
+              </div>
+              {/* Buttons */}
+              <div style={{padding:"14px 16px 28px",display:"flex",flexDirection:"column",gap:10}}>
+                <button onClick={()=>{
+                  setBookings(bs=>bs.filter(x=>x.id!==blockModal.id));
+                  _closeBlock();
+                }} style={{
+                  width:"100%",padding:"14px",borderRadius:18,border:"none",cursor:"pointer",
+                  background:`linear-gradient(160deg,${GREEN},#4ade80)`,
+                  color:"#fff",fontSize:14,fontWeight:800,
+                  boxShadow:`0 6px 20px ${GREEN}55`,
+                }}>
+                  🔓 Розблокувати
+                </button>
+                <button onClick={_closeBlock} style={{
+                  width:"100%",padding:"13px",borderRadius:18,border:"none",cursor:"pointer",
+                  background:"linear-gradient(145deg,#f87171,#b91c1c)",
+                  color:"#fff",fontSize:13,fontWeight:700,
+                  boxShadow:"0 4px 14px #b91c1c66",
+                }}>Закрити</button>
               </div>
             </div>
           </div>
-          {/* Buttons */}
-          <div style={{padding:"14px 16px 28px",display:"flex",flexDirection:"column",gap:10}}>
-            <button onClick={()=>{
-              setBookings(bs=>bs.filter(x=>x.id!==blockModal.id));
-              setBlockModal(null);
-            }} style={{
-              width:"100%",padding:"14px",borderRadius:18,border:"none",cursor:"pointer",
-              background:`linear-gradient(160deg,${GREEN},#4ade80)`,
-              color:"#fff",fontSize:14,fontWeight:800,
-              boxShadow:`0 6px 20px ${GREEN}55`,
-            }}>
-              🔓 Розблокувати
-            </button>
-            <button onClick={()=>setBlockModal(null)} style={{
-              width:"100%",padding:"13px",borderRadius:18,border:"none",cursor:"pointer",
-              background:"linear-gradient(145deg,#f87171,#b91c1c)",
-              color:"#fff",fontSize:13,fontWeight:700,
-              boxShadow:"0 4px 14px #b91c1c66",
-            }}>Закрити</button>
-          </div>
-        </div>
-      </div>
-    )}
+        </>
+      );
+    })()}
 
     {bubbleData && (
       <div onClick={()=>setBubbleData(null)} style={{position:"fixed",inset:"0 0 80px 0",zIndex:100}}>
@@ -2468,65 +2486,81 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     })()}
 
     {/* ── VIP слот модалка ── */}
-    {vipSlotModal && (
-      <div onClick={()=>setVipSlotModal(null)} style={{
-        position:"fixed",inset:0,zIndex:200,background:shade(SCRIM),
-        display:"flex",alignItems:"flex-end",justifyContent:"center",
-        backdropFilter:"blur(12px)"
-      }}>
-        <div onClick={e=>e.stopPropagation()} style={{
-          width:"100%",maxWidth:480,background:BG_DEEP,
-          borderRadius:"28px 28px 0 0",
-          boxShadow:`0 -2px 0 rgba(168,85,247,0.4), 0 -16px 60px ${shade(0.6)}`,
-          display:"flex",flexDirection:"column",overflow:"hidden",
-        }}>
-          <div style={{
-            padding:"16px 16px 18px",
-            background:"linear-gradient(145deg,rgba(168,85,247,0.18),rgba(124,58,237,0.08))",
-            borderBottom:"1px solid rgba(168,85,247,0.2)",
+    {(vipSlotModal || vipSlotModalClosing) && (() => {
+      const _closeVip = () => setVipSlotModalClosing(true);
+      return (
+        <>
+          <style>{`
+            @keyframes _vip-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+            @keyframes _vip-down{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+            @keyframes _vip-bg-in{from{opacity:0}to{opacity:1}}
+            @keyframes _vip-bg-out{from{opacity:1}to{opacity:0}}
+          `}</style>
+          <div onClick={vipSlotModalClosing ? undefined : _closeVip} style={{
+            position:"fixed",inset:0,zIndex:200,background:shade(0.55),
+            display:"flex",alignItems:"flex-end",justifyContent:"center",
+            backdropFilter:"blur(8px)",
+            animation: vipSlotModalClosing ? `_vip-bg-out 0.26s ease-in forwards` : `_vip-bg-in 0.2s ease-out`,
           }}>
-            <div style={{width:38,height:4,borderRadius:2,background:ink(0.18),margin:"0 auto 14px"}}/>
-            <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div onClick={e=>e.stopPropagation()}
+              onAnimationEnd={vipSlotModalClosing ? ()=>{ setVipSlotModalClosing(false); setVipSlotModal(null); } : undefined}
+              style={{
+                width:"100%",maxWidth:480,background:BG_DEEP,
+                borderRadius:"24px 24px 0 0",
+                boxShadow:`0 -2px 0 rgba(168,85,247,0.4), 0 -16px 60px ${shade(0.6)}`,
+                display:"flex",flexDirection:"column",overflow:"hidden",
+                pointerEvents: vipSlotModalClosing ? "none" : undefined,
+                animation: vipSlotModalClosing ? `_vip-down 0.26s ease-in forwards` : `_vip-up 0.38s cubic-bezier(0.34,1.56,0.64,1)`,
+              }}>
               <div style={{
-                width:52,height:52,borderRadius:26,flexShrink:0,
-                background:"linear-gradient(145deg,#a855f7,#7c3aed)",
-                boxShadow:"0 0 0 3px rgba(168,85,247,0.3), 0 6px 20px rgba(168,85,247,0.4)",
-                display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,
-              }}>👑</div>
-              <div>
-                <div style={{fontSize:18,fontWeight:900,color:PURPLE}}>VIP Слот</div>
-                <div style={{fontSize:12,color:TEXT_DIM,marginTop:3}}>
-                  {getDayInfo(vipSlotModal.day).fullLabel} · {fmtTime(vipSlotModal.startMin)} · {fmtDur(vipSlotModal.durMin)}
+                padding:"16px 16px 18px",
+                background:"linear-gradient(145deg,rgba(168,85,247,0.18),rgba(124,58,237,0.08))",
+                borderBottom:"1px solid rgba(168,85,247,0.2)",
+              }}>
+                <div style={{width:38,height:4,borderRadius:2,background:ink(0.18),margin:"0 auto 14px"}}/>
+                <div style={{display:"flex",alignItems:"center",gap:14}}>
+                  <div style={{
+                    width:52,height:52,borderRadius:26,flexShrink:0,
+                    background:"linear-gradient(145deg,#a855f7,#7c3aed)",
+                    boxShadow:"0 0 0 3px rgba(168,85,247,0.3), 0 6px 20px rgba(168,85,247,0.4)",
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,
+                  }}>👑</div>
+                  <div>
+                    <div style={{fontSize:18,fontWeight:900,color:PURPLE}}>VIP Слот</div>
+                    <div style={{fontSize:12,color:TEXT_DIM,marginTop:3}}>
+                      {getDayInfo(vipSlotModal.day).fullLabel} · {fmtTime(vipSlotModal.startMin)} · {fmtDur(vipSlotModal.durMin)}
+                    </div>
+                    <div style={{fontSize:11,color:TEXT_FAINT,marginTop:4}}>
+                      Тільки для учнів категорії VIP
+                    </div>
+                  </div>
                 </div>
-                <div style={{fontSize:11,color:TEXT_FAINT,marginTop:4}}>
-                  Тільки для учнів категорії VIP
-                </div>
+              </div>
+              <div style={{padding:"14px 16px 32px",display:"flex",flexDirection:"column",gap:10}}>
+                <button onClick={()=>{
+                  const v = vipSlotModal;
+                  const dateStr = v._dateStr || absDayToDateStr(v.day);
+                  const hh = String(Math.floor(v.startMin / 60)).padStart(2, "0");
+                  const mm = String(v.startMin % 60).padStart(2, "0");
+                  update(ref(db, `timeslots/${dateStr}/slot${hh}${mm}`), { vipOnly: false }).catch(() => {});
+                  _closeVip();
+                }} style={{
+                  width:"100%",padding:"14px",borderRadius:18,border:"none",cursor:"pointer",
+                  background:`linear-gradient(160deg,${GREEN},#4ade80)`,
+                  color:"#fff",fontSize:14,fontWeight:800,
+                  boxShadow:`0 6px 20px ${GREEN}55`,
+                }}>🗑 Видалити VIP слот</button>
+                <button onClick={_closeVip} style={{
+                  width:"100%",padding:"13px",borderRadius:18,border:"none",cursor:"pointer",
+                  background:`linear-gradient(135deg,${SURFACE_HI},${SURFACE})`,
+                  color:TEXT_DIM,fontSize:13,fontWeight:700,boxShadow:SHADOW_OUT,
+                }}>Закрити</button>
               </div>
             </div>
           </div>
-          <div style={{padding:"14px 16px 32px",display:"flex",flexDirection:"column",gap:10}}>
-            <button onClick={()=>{
-              const v = vipSlotModal;
-              const dateStr = v._dateStr || absDayToDateStr(v.day);
-              const hh = String(Math.floor(v.startMin / 60)).padStart(2, "0");
-              const mm = String(v.startMin % 60).padStart(2, "0");
-              update(ref(db, `timeslots/${dateStr}/slot${hh}${mm}`), { vipOnly: false }).catch(() => {});
-              setVipSlotModal(null);
-            }} style={{
-              width:"100%",padding:"14px",borderRadius:18,border:"none",cursor:"pointer",
-              background:`linear-gradient(160deg,${GREEN},#4ade80)`,
-              color:"#fff",fontSize:14,fontWeight:800,
-              boxShadow:`0 6px 20px ${GREEN}55`,
-            }}>🗑 Видалити VIP слот</button>
-            <button onClick={()=>setVipSlotModal(null)} style={{
-              width:"100%",padding:"13px",borderRadius:18,border:"none",cursor:"pointer",
-              background:`linear-gradient(135deg,${SURFACE_HI},${SURFACE})`,
-              color:TEXT_DIM,fontSize:13,fontWeight:700,boxShadow:SHADOW_OUT,
-            }}>Закрити</button>
-          </div>
-        </div>
-      </div>
-    )}
+        </>
+      );
+    })()}
 
     <NewBookingModal data={formData} onClose={()=>setFormData(null)}
       onConfirm={b=>{
@@ -2611,9 +2645,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 // CREATE SLOT SHEET — вільний слот з вибором часу і тривалості
 // ═══════════════════════════════════════════════════════════════
 function CreateSlotSheet({ data, settings, onClose }) {
-  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, GREEN } = useContext(ThemeContext);
+  const { BG_DEEP, BORDER, TEXT, DIM, FAINT, GREEN } = useContext(ThemeContext);
+  const { glow, shade } = useFX();
   const TEXT_DIM = DIM, TEXT_FAINT = FAINT;
-  const { shade } = useFX();
   const slotStep = settings.slotCreateStep || 30;
   const timeItems = useMemo(() => {
     const arr = [];
@@ -2634,8 +2668,10 @@ function CreateSlotSheet({ data, settings, onClose }) {
   const [timeIdx, setTimeIdx] = useState(initTimeIdx);
   const [durIdx,  setDurIdx]  = useState(1);
   const [saving,  setSaving]  = useState(false);
+  const [closing, setClosing] = useState(false);
 
   const day = getDayInfo(data.day);
+  const _close = () => setClosing(true);
 
   const handleCreate = async () => {
     setSaving(true);
@@ -2653,42 +2689,68 @@ function CreateSlotSheet({ data, settings, onClose }) {
     }
     await update(ref(db, '/'), updates).catch(() => {});
     setSaving(false);
-    onClose();
+    _close();
   };
 
   return (
-    <div style={{position:"fixed",inset:0,background:shade(SCRIM),backdropFilter:"blur(6px)",zIndex:200,display:"flex",alignItems:"flex-end"}}
-      onClick={onClose}>
-      <div onClick={e=>e.stopPropagation()} style={{
-        width:"100%",background:SURFACE,borderRadius:"22px 22px 0 0",
-        padding:"16px 20px 40px",
-        boxShadow:`0 -10px 40px ${shade(0.5)}`
+    <>
+      <style>{`
+        @keyframes _cs-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes _cs-down{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+        @keyframes _cs-bg-in{from{opacity:0}to{opacity:1}}
+        @keyframes _cs-bg-out{from{opacity:1}to{opacity:0}}
+      `}</style>
+      <div onClick={closing ? undefined : _close} style={{
+        position:"fixed",inset:0,zIndex:200,background:shade(0.55),
+        display:"flex",alignItems:"flex-end",justifyContent:"center",
+        backdropFilter:"blur(8px)",
+        animation: closing ? `_cs-bg-out 0.26s ease-in forwards` : `_cs-bg-in 0.2s ease-out`,
       }}>
-        <div style={{width:36,height:4,background:BORDER,borderRadius:2,margin:"0 auto 16px"}}/>
-        <div style={{fontSize:13,fontWeight:700,color:TEXT_DIM,marginBottom:16,textAlign:"center",letterSpacing:0.5,textTransform:"uppercase"}}>
-          Вільний слот · {day.fullLabel} {day.num}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-          <div>
-            <div style={{fontSize:10,fontWeight:700,color:TEXT_DIM,letterSpacing:1,marginBottom:6,textAlign:"center"}}>ПОЧАТОК</div>
-            <DrumRoll items={timeItems} currentIdx={timeIdx} onChange={setTimeIdx} itemH={40} visible={3}/>
+        <div onClick={e=>e.stopPropagation()}
+          onAnimationEnd={closing ? ()=>{ setClosing(false); onClose(); } : undefined}
+          style={{
+            width:"100%",maxWidth:480,background:BG_DEEP,
+            borderRadius:"24px 24px 0 0",
+            boxShadow:`0 -2px 0 ${glow(0.12)}, 0 -16px 60px ${shade(0.6)}`,
+            overflow:"hidden",
+            pointerEvents: closing ? "none" : undefined,
+            animation: closing ? `_cs-down 0.26s ease-in forwards` : `_cs-up 0.38s cubic-bezier(0.34,1.56,0.64,1)`,
+          }}>
+          <div style={{
+            padding:"10px 20px 14px",
+            background:shade(0.04),
+            borderBottom:`1px solid ${glow(0.08)}`,
+          }}>
+            <div style={{width:36,height:4,borderRadius:2,background:glow(0.2),margin:"0 auto 12px"}}/>
+            <div style={{fontSize:15,fontWeight:700,color:TEXT}}>
+              Вільний слот · {day.fullLabel} {day.num}
+            </div>
           </div>
-          <div>
-            <div style={{fontSize:10,fontWeight:700,color:TEXT_DIM,letterSpacing:1,marginBottom:6,textAlign:"center"}}>ТРИВАЛІСТЬ</div>
-            <DrumRoll items={durItems} currentIdx={durIdx} onChange={setDurIdx} itemH={40} visible={3}/>
+          <div style={{padding:"16px 20px"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:TEXT_DIM,letterSpacing:1,marginBottom:6,textAlign:"center"}}>ПОЧАТОК</div>
+                <DrumRoll items={timeItems} currentIdx={timeIdx} onChange={setTimeIdx} itemH={40} visible={3}/>
+              </div>
+              <div>
+                <div style={{fontSize:10,fontWeight:700,color:TEXT_DIM,letterSpacing:1,marginBottom:6,textAlign:"center"}}>ТРИВАЛІСТЬ</div>
+                <DrumRoll items={durItems} currentIdx={durIdx} onChange={setDurIdx} itemH={40} visible={3}/>
+              </div>
+            </div>
+            <div style={{textAlign:"center",fontSize:12,color:TEXT_DIM,marginBottom:14}}>
+              {fmtTime(timeItems[timeIdx]?.value ?? 0)} — {fmtTime((timeItems[timeIdx]?.value ?? 0) + durItems[durIdx].value)}
+            </div>
+            <button onClick={handleCreate} disabled={saving} style={{
+              width:"100%",padding:14,borderRadius:14,border:"none",cursor:"pointer",
+              background:`linear-gradient(165deg,${GREEN},#16a34a)`,
+              color:"#fff",fontSize:14,fontWeight:800,
+              boxShadow:"0 4px 16px rgba(99,211,120,0.4),inset 1px 1px 0 rgba(255,255,255,0.25)",
+              marginBottom:16,
+            }}>{saving ? "Створюємо..." : "✓ Створити слот"}</button>
           </div>
         </div>
-        <div style={{textAlign:"center",fontSize:12,color:TEXT_DIM,marginBottom:14}}>
-          {fmtTime(timeItems[timeIdx]?.value ?? 0)} — {fmtTime((timeItems[timeIdx]?.value ?? 0) + durItems[durIdx].value)}
-        </div>
-        <button onClick={handleCreate} disabled={saving} style={{
-          width:"100%",padding:14,borderRadius:14,border:"none",cursor:"pointer",
-          background:`linear-gradient(165deg,${GREEN},#16a34a)`,
-          color:"#fff",fontSize:14,fontWeight:800,
-          boxShadow:"0 4px 16px rgba(99,211,120,0.4),inset 1px 1px 0 rgba(255,255,255,0.25)"
-        }}>{saving ? "Створюємо..." : "✓ Створити слот"}</button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -4060,15 +4122,18 @@ export default function App() {
 function PersonalEventModal({ data, onClose, onConfirm }) {
   const { BG_DEEP, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT } = useContext(ThemeContext);
   const { shade, ink } = useFX();
-  const [title,  setTitle]  = useState("");
-  const [durMin, setDurMin] = useState(60);
-  const [note,   setNote]   = useState("");
+
+  const [title,        setTitle]        = useState("");
+  const [durMin,       setDurMin]       = useState(60);
+  const [note,         setNote]         = useState("");
+  const [closing,      setClosing]      = useState(false);
+  const [pendingEvent, setPendingEvent] = useState(null);
 
   useEffect(() => {
     if (data) { setTitle(""); setDurMin(60); setNote(""); }
   }, [!!data]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!data) return null;
+  if (!data && !closing) return null;
 
   const [hh, mm] = data.time.split(":").map(Number);
   const startMin = hh * 60 + mm;
@@ -4085,104 +4150,124 @@ function PersonalEventModal({ data, onClose, onConfirm }) {
     { label:"3г",   value:180 },
   ];
 
+  const _close = () => setClosing(true);
+
   return (
-    <div onClick={onClose} style={{
-      position:"fixed",inset:0,background:shade(SCRIM),zIndex:200,
-      display:"flex",alignItems:"flex-end",justifyContent:"center",
-      backdropFilter:"blur(8px)",
-    }}>
-      <div onClick={e=>e.stopPropagation()} style={{
-        width:"100%",maxWidth:480,background:BG_DEEP,
-        borderRadius:"24px 24px 0 0",
-        boxShadow:`0 -2px 0 rgba(45,212,191,0.3), 0 -16px 60px ${shade(0.6)}`,
-        maxHeight:"85vh",overflowY:"auto",
-        WebkitOverflowScrolling:"touch",scrollbarWidth:"none",
+    <>
+      <style>{`
+        @keyframes _pe-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes _pe-down{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+        @keyframes _pe-bg-in{from{opacity:0}to{opacity:1}}
+        @keyframes _pe-bg-out{from{opacity:1}to{opacity:0}}
+      `}</style>
+      <div onClick={closing ? undefined : _close} style={{
+        position:"fixed",inset:0,background:shade(0.55),zIndex:200,
+        display:"flex",alignItems:"flex-end",justifyContent:"center",
+        backdropFilter:"blur(8px)",
+        animation: closing ? `_pe-bg-out 0.26s ease-in forwards` : `_pe-bg-in 0.2s ease-out`,
       }}>
-        <div style={{
-          padding:"18px 18px 14px",
-          background:"linear-gradient(145deg,rgba(45,212,191,0.12),rgba(20,184,166,0.05))",
-          borderBottom:"1px solid rgba(45,212,191,0.15)",
-        }}>
-          <div style={{fontSize:18,fontWeight:800,color:"#2dd4bf",marginBottom:2}}>📌 Особиста подія</div>
-          <div style={{fontSize:12,color:DIM}}>{data.dateStr} · {data.time}</div>
-        </div>
-
-        <div style={{padding:"16px 18px 32px",display:"flex",flexDirection:"column",gap:18}}>
-          {/* Назва */}
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Назва</div>
-            <input
-              value={title}
-              onChange={e=>setTitle(e.target.value)}
-              placeholder="Наприклад: Лікар, Справи..."
-              style={{
-                width:"100%",padding:"10px 12px",borderRadius:12,
-                background:SURF_LO,border:`1px solid ${BORDER}`,
-                color:TEXT,fontSize:14,outline:"none",boxSizing:"border-box",
-              }}
-            />
+        <div onClick={e=>e.stopPropagation()}
+          onAnimationEnd={closing ? ()=>{
+            setClosing(false);
+            setPendingEvent(null);
+            if (pendingEvent) onConfirm(pendingEvent);
+            else onClose();
+          } : undefined}
+          style={{
+            width:"100%",maxWidth:480,background:BG_DEEP,
+            borderRadius:"24px 24px 0 0",
+            boxShadow:`0 -2px 0 rgba(45,212,191,0.3), 0 -16px 60px ${shade(0.6)}`,
+            maxHeight:"85vh",overflowY:"auto",
+            WebkitOverflowScrolling:"touch",scrollbarWidth:"none",
+            pointerEvents: closing ? "none" : undefined,
+            animation: closing ? `_pe-down 0.26s ease-in forwards` : `_pe-up 0.38s cubic-bezier(0.34,1.56,0.64,1)`,
+          }}>
+          <div style={{
+            padding:"10px 18px 14px",
+            background:"linear-gradient(145deg,rgba(45,212,191,0.12),rgba(20,184,166,0.05))",
+            borderBottom:"1px solid rgba(45,212,191,0.15)",
+            borderRadius:"24px 24px 0 0",
+          }}>
+            <div style={{width:36,height:4,borderRadius:2,background:"rgba(45,212,191,0.35)",margin:"0 auto 12px"}}/>
+            <div style={{fontSize:18,fontWeight:800,color:"#2dd4bf",marginBottom:2}}>📌 Особиста подія</div>
+            <div style={{fontSize:12,color:DIM}}>{data.dateStr} · {data.time}</div>
           </div>
 
-          {/* Тривалість */}
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Тривалість</div>
-            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {DUR_OPTIONS.map(o=>(
-                <button key={o.value} onClick={()=>setDurMin(o.value)} style={{
-                  padding:"6px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
-                  background: durMin===o.value ? "rgba(45,212,191,0.2)" : SURF_HI,
-                  color: durMin===o.value ? "#2dd4bf" : DIM,
-                  outline: durMin===o.value ? "1.5px solid rgba(45,212,191,0.5)" : "none",
-                }}>{o.label}</button>
-              ))}
+          <div style={{padding:"16px 18px 32px",display:"flex",flexDirection:"column",gap:18}}>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Назва</div>
+              <input
+                value={title}
+                onChange={e=>setTitle(e.target.value)}
+                placeholder="Наприклад: Лікар, Справи..."
+                style={{
+                  width:"100%",padding:"10px 12px",borderRadius:12,
+                  background:SURF_LO,border:`1px solid ${BORDER}`,
+                  color:TEXT,fontSize:14,outline:"none",boxSizing:"border-box",
+                }}
+              />
             </div>
-          </div>
 
-          {/* Нотатка */}
-          <div>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Нотатка (необов'язково)</div>
-            <textarea
-              value={note}
-              onChange={e=>setNote(e.target.value)}
-              rows={2}
-              placeholder="Деталі..."
-              style={{
-                width:"100%",padding:"10px 12px",borderRadius:12,resize:"none",
-                background:SURF_LO,border:`1px solid ${BORDER}`,
-                color:TEXT,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",
+            <div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Тривалість</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {DUR_OPTIONS.map(o=>(
+                  <button key={o.value} onClick={()=>setDurMin(o.value)} style={{
+                    padding:"6px 14px",borderRadius:10,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
+                    background: durMin===o.value ? "rgba(45,212,191,0.2)" : SURF_HI,
+                    color: durMin===o.value ? "#2dd4bf" : DIM,
+                    outline: durMin===o.value ? "1.5px solid rgba(45,212,191,0.5)" : "none",
+                  }}>{o.label}</button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Нотатка (необов'язково)</div>
+              <textarea
+                value={note}
+                onChange={e=>setNote(e.target.value)}
+                rows={2}
+                placeholder="Деталі..."
+                style={{
+                  width:"100%",padding:"10px 12px",borderRadius:12,resize:"none",
+                  background:SURF_LO,border:`1px solid ${BORDER}`,
+                  color:TEXT,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",
+                }}
+              />
+            </div>
+
+            <button
+              disabled={!canSave}
+              onClick={()=>{
+                if (!canSave) return;
+                setPendingEvent({
+                  id: `personal-${Date.now()}`,
+                  day, date: data.dateStr,
+                  startMin, durMin,
+                  name: title.trim(),
+                  note: note.trim(),
+                  type: "personal",
+                  status: "personal",
+                  tsc: "",
+                  wasAdminBlocked: !!data.slot?.adminBlocked,
+                  createdAt: Date.now(),
+                  createdBy: "admin",
+                });
+                _close();
               }}
-            />
+              style={{
+                width:"100%",padding:"13px",borderRadius:14,border:"none",cursor:"pointer",
+                background: canSave ? "linear-gradient(145deg,#2dd4bf,#14b8a6)" : ink(0.07),
+                color: canSave ? "#fff" : FAINT,
+                fontSize:14,fontWeight:800,
+                boxShadow: canSave ? "0 4px 16px rgba(45,212,191,0.35)" : "none",
+              }}
+            >Зберегти</button>
           </div>
-
-          <button
-            disabled={!canSave}
-            onClick={()=>{
-              if (!canSave) return;
-              onConfirm({
-                id: `personal-${Date.now()}`,
-                day, date: data.dateStr,
-                startMin, durMin,
-                name: title.trim(),
-                note: note.trim(),
-                type: "personal",
-                status: "personal",
-                tsc: "",
-                wasAdminBlocked: !!data.slot?.adminBlocked,
-                createdAt: Date.now(),
-                createdBy: "admin",
-              });
-            }}
-            style={{
-              width:"100%",padding:"13px",borderRadius:14,border:"none",cursor:"pointer",
-              background: canSave ? "linear-gradient(145deg,#2dd4bf,#14b8a6)" : ink(0.07),
-              color: canSave ? "#fff" : FAINT,
-              fontSize:14,fontWeight:800,
-              boxShadow: canSave ? "0 4px 16px rgba(45,212,191,0.35)" : "none",
-            }}
-          >Зберегти</button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
