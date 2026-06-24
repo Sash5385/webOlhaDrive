@@ -2171,15 +2171,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             color:"#2dd4bf",fontSize:12,fontWeight:800,
             border:"1px solid rgba(45,212,191,0.3)",
           }}>📌 Особиста подія</button>
-          <button onClick={()=>{
-            setBroadcastInit({ date: longTapMenu.dateStr, slot: fmtTime(longTapMenu.startMin) });
-            setLongTapMenu(null);
-          }} style={{
-            marginTop:8, width:"100%",padding:"9px 12px",borderRadius:10,cursor:"pointer",
-            background:glow(0.08),
-            color:ACCENT,fontSize:12,fontWeight:800,
-            border:`1px solid ${glow(0.22)}`,
-          }}>📣 Розіслати учням</button>
         </div>
       </div>
     )}
@@ -2267,6 +2258,19 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             display:"flex",alignItems:"center",gap:9,
           }}>
             <span>📌</span> Особиста подія
+          </button>
+
+          {/* Розіслати учням */}
+          <button onClick={()=>{
+            setBroadcastInit({ date: slotOptions.dateStr, slot: slotOptions.time });
+            setSlotOptions(null);
+          }} style={{
+            width:"100%",padding:"11px 14px",border:"none",cursor:"pointer",
+            background:"none",borderBottom:`1px solid ${DIVIDER_SM}`,
+            color:ACCENT,fontSize:13,fontWeight:700,
+            display:"flex",alignItems:"center",gap:9,
+          }}>
+            <span>📣</span> Розіслати учням
           </button>
 
           {/* VIP + надбавки — для відкритих і закритих слотів */}
