@@ -3949,7 +3949,6 @@ function PersonalEventModal({ data, onClose, onConfirm }) {
           <div>
             <div style={{fontSize:10,fontWeight:700,letterSpacing:1.2,color:FAINT,textTransform:"uppercase",marginBottom:7}}>Назва</div>
             <input
-              autoFocus
               value={title}
               onChange={e=>setTitle(e.target.value)}
               placeholder="Наприклад: Лікар, Справи..."
