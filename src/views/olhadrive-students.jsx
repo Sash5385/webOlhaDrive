@@ -233,201 +233,246 @@ function EditForm({ s, onSave, onCancel }) {
   );
 }
 
-// ─── STUDENT CARD ────────────────────────────────────────────────
-function Card({ s, expanded, onToggle, onBlock, onUpdate, onDelete }) {
-  const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, GREEN, BLUE, GOLD, RED, SO, SI } = useContext(ThemeContext);
-  const [editMode,   setEditMode]   = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
-
+// ─── STUDENT CARD (collapsed row only) ──────────────────────────
+function StudentCard({ s, onSelect }) {
+  const { BG_DEEP, BORDER, TEXT, DIM, FAINT, GREEN, GOLD, RED, SI } = useContext(ThemeContext);
   const typeColor = s.type === "school" ? GREEN : GOLD;
   const typeLabel = s.type === "school" ? "Автошкола" : "Приватний";
-  const phone = (s.phone||"").replace(/\D/g,"");
-
-  const ini = s.name.split(" ").map(w=>w[0]).slice(0,2).join("");
-  const barColor = s.blocked ? RED : typeColor;
+  const ini       = s.name.split(" ").map(w=>w[0]).slice(0,2).join("");
+  const barColor  = s.blocked ? RED : typeColor;
 
   return (
-    <div style={{
-      background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,
-      borderRadius:13, overflow:"hidden",
-      boxShadow:SO, border:`1px solid ${BORDER}`,
-      opacity:s.blocked?0.8:1,
-    }}>
-      {/* ── COLLAPSED ROW ── */}
-      <div style={{display:"flex",alignItems:"center",gap:9,padding:"9px 12px",cursor:"pointer"}} onClick={()=>{ setEditMode(false); onToggle(s.id); }}>
-        {/* left bar */}
-        <div style={{width:4,alignSelf:"stretch",borderRadius:3,background:barColor,flexShrink:0}}/>
-        {/* initials icon3d */}
+    <div
+      onClick={() => onSelect(s)}
+      style={{
+        background:BG_DEEP, borderRadius:12, boxShadow:SI,
+        border:`1px solid ${BORDER}`, opacity:s.blocked?0.8:1,
+        display:"flex", overflow:"hidden", cursor:"pointer",
+      }}
+    >
+      <div style={{width:4,background:barColor,flexShrink:0}}/>
+      <div style={{flex:1,padding:"9px 10px 9px 12px",display:"flex",alignItems:"center",gap:9,minWidth:0}}>
         <div className="icon3d" style={{
           width:36,height:36,borderRadius:11,flexShrink:0,
           background:`linear-gradient(145deg,${barColor}44,${barColor}18)`,
           fontSize:13,fontWeight:900,color:barColor,
         }}>{ini}</div>
-        {/* name + type */}
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:13,fontWeight:800,color:s.blocked?DIM:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
             {s.name}{s.blocked && <span style={{fontSize:9,color:RED,fontWeight:700,marginLeft:6}}>🚫</span>}
           </div>
           <div style={{fontSize:10,color:typeColor,fontWeight:700,marginTop:2}}>{typeLabel}</div>
         </div>
-        {/* chat icon3d */}
-        <button onClick={e=>{ e.stopPropagation(); navTo("chats"); }} style={{background:"none",border:"none",cursor:"pointer",padding:0}}>
+        <button onClick={e=>{e.stopPropagation();navTo("chats");}} style={{background:"none",border:"none",cursor:"pointer",padding:0,flexShrink:0}}>
           <div className="icon3d" style={{width:26,height:26,background:"linear-gradient(145deg,rgba(91,155,255,.35),rgba(37,99,235,.2))",borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center"}}>
             {ICONS.chat}
           </div>
         </button>
-        {/* chevron */}
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.2" strokeLinecap="round"
-          style={{transform:expanded?"rotate(180deg)":"none",transition:"transform .22s",flexShrink:0}}>
-          <polyline points="6 9 12 15 18 9"/>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.5" strokeLinecap="round" style={{flexShrink:0}}>
+          <polyline points="9 18 15 12 9 6"/>
         </svg>
       </div>
-
-      {/* ── EXPANDED ── */}
-      {expanded && (
-        <div className="ex" style={{borderTop:`1px solid ${BORDER}`,padding:"12px 12px 14px",display:"flex",flexDirection:"column",gap:11}}>
-
-          {editMode ? (
-            <EditForm s={s} onSave={patch=>{ onUpdate(s.id,patch); setEditMode(false); }} onCancel={()=>setEditMode(false)}/>
-          ) : (
-            <>
-              {/* Phone + discount row */}
-              <div style={{display:"flex",gap:8}}>
-                <div style={{flex:1,background:BG_DEEP,borderRadius:9,padding:"8px 11px",boxShadow:SI}}>
-                  <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Телефон</div>
-                  <div style={{fontSize:13,fontWeight:700,color:TEXT}}>{s.phone||"—"}</div>
-                </div>
-                <div style={{width:90,background:BG_DEEP,borderRadius:9,padding:"8px 11px",boxShadow:SI,textAlign:"center"}}>
-                  <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Знижка</div>
-                  <div style={{fontSize:16,fontWeight:900,color:s.discount>0?GOLD:DIM}}>{s.discount||0}%</div>
-                </div>
-              </div>
-
-              {/* Type + progress */}
-              <div style={{background:BG_DEEP,borderRadius:9,padding:"9px 11px",boxShadow:SI}}>
-                <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:s.type==="school"?9:0}}>
-                  <span style={{fontSize:11,fontWeight:800,color:typeColor}}>{typeLabel}</span>
-                  {s.type==="school" && <span style={{fontSize:10,color:FAINT}}>· {s.hours+(s.hoursOffset||0)}/40 год</span>}
-                </div>
-                {s.type==="school" && <Progress hours={s.hours} offset={s.hoursOffset||0}/>}
-              </div>
-
-              {/* Transfer hours from another school */}
-              {s.type==="school" && (
-                <div style={{background:BG_DEEP,borderRadius:9,padding:"9px 11px",boxShadow:SI}}>
-                  <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>
-                    Додати години
-                  </div>
-                  <div style={{display:"flex",alignItems:"center",gap:8}}>
-                    <button
-                      onClick={()=>onUpdate(s.id,{hoursOffset:Math.max(0,(s.hoursOffset||0)-1)})}
-                      style={{
-                        width:30,height:30,borderRadius:9,border:"none",cursor:"pointer",flexShrink:0,
-                        background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-                        color:TEXT,fontSize:18,fontWeight:700,boxShadow:SO,
-                        display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
-                      }}>−</button>
-                    <div style={{flex:1,textAlign:"center"}}>
-                      <span style={{fontSize:20,fontWeight:900,color:(s.hoursOffset||0)>0?GREEN:FAINT}}>
-                        {s.hoursOffset||0}
-                      </span>
-                      <span style={{fontSize:11,color:FAINT,marginLeft:5}}>год</span>
-                    </div>
-                    <button
-                      onClick={()=>onUpdate(s.id,{hoursOffset:Math.min(39,(s.hoursOffset||0)+1)})}
-                      style={{
-                        width:30,height:30,borderRadius:9,border:"none",cursor:"pointer",flexShrink:0,
-                        background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-                        color:TEXT,fontSize:18,fontWeight:700,boxShadow:SO,
-                        display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
-                      }}>+</button>
-                  </div>
-                </div>
-              )}
-
-              {/* 6 action buttons 3×2 */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
-                <Btn icon={ICONS.phone}    label="Дзвонити" onClick={()=>{window.location.href=`tel:${s.phone}`;}}    color={GREEN}/>
-                <Btn icon={ICONS.viber}    label="Вайбер"   onClick={()=>{window.location.href=`viber://chat?number=%2B${phone}`;}} color={BLUE}/>
-                <Btn icon={ICONS.telegram} label="Телеграм" onClick={()=>{window.open(`https://t.me/+${phone}`,"_blank");}} color="#5b9bff"/>
-                <Btn icon={ICONS.chat}     label="Чат"      onClick={()=>navTo("chats")}         color={BLUE}/>
-                <Btn icon={ICONS.edit}     label="Редагувати" onClick={()=>setEditMode(true)}/>
-                <Btn icon={s.blocked?ICONS.unban:ICONS.ban} label={s.blocked?"Розблок.":"Заблок."} onClick={()=>onBlock(s.id)} danger={!s.blocked}/>
-                <Btn icon={ICONS.trash} label="Видалити" onClick={()=>setConfirmDel(true)} danger/>
-              </div>
-
-              {/* delete confirmation */}
-              {confirmDel && (
-                <div className="ex" style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:10,padding:"11px 13px",display:"flex",flexDirection:"column",gap:9}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#fca5a5"}}>Видалити учня назавжди?</div>
-                  <div style={{fontSize:11,color:DIM}}>Цю дію не можна скасувати.</div>
-                  <div style={{display:"flex",gap:7}}>
-                    <button onClick={()=>onDelete(s.id)} style={{flex:1,padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:"linear-gradient(145deg,rgba(239,68,68,.5),rgba(185,28,28,.4))",color:"#fff",fontSize:12,fontWeight:700,boxShadow:SO}}>Так, видалити</button>
-                    <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"9px",borderRadius:9,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:12,fontWeight:700,boxShadow:SO}}>Скасувати</button>
-                  </div>
-                </div>
-              )}
-
-              {/* placeholder to close the original grid */}
-              <div style={{display:"none"}}>
-              </div>
-              {/* VIP toggle */}
-              <div
-                onClick={()=>onUpdate(s.id, { isVip: !s.isVip })}
-                style={{
-                  display:"flex", alignItems:"center", gap:10,
-                  background: s.isVip ? "rgba(168,85,247,0.12)" : BG_DEEP,
-                  border: s.isVip ? "1px solid rgba(168,85,247,0.35)" : `1px solid ${BORDER}`,
-                  borderRadius:10, padding:"10px 13px", cursor:"pointer",
-                }}>
-                <span style={{fontSize:16, lineHeight:1}}>👑</span>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:12, fontWeight:700, color: s.isVip ? "#c084fc" : TEXT}}>VIP учень</div>
-                  <div style={{fontSize:10, color:FAINT, marginTop:2}}>
-                    {s.isVip ? "Має доступ до VIP слотів" : "Без доступу до VIP слотів"}
-                  </div>
-                </div>
-                <div style={{
-                  width:36, height:20, borderRadius:10, position:"relative",
-                  background: s.isVip ? "linear-gradient(145deg,#a855f7,#7c3aed)" : "rgba(255,255,255,0.08)",
-                  transition:"background .2s", flexShrink:0,
-                }}>
-                  <div style={{position:"absolute", top:2, left:s.isVip?18:2, width:16, height:16, borderRadius:8, background:"#fff", transition:"left .2s"}}/>
-                </div>
-              </div>
-
-              {/* Booking history */}
-              {(s.bookings||[]).length > 0 && (
-                <div>
-                  <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Історія записів</div>
-                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                    {(s.bookings||[]).map((b,i)=>{
-                      const [c,bg] = b.status==="confirmed"?[GREEN,"rgba(126,217,87,.1)"]:b.status==="noshow"?[RED,"rgba(239,68,68,.1)"]:[ACCENT,"rgba(255,90,60,.1)"];
-                      const icon = b.status==="confirmed"?"✓":b.status==="noshow"?"✕":"⏳";
-                      return (
-                        <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,borderRadius:9,padding:"7px 11px",boxShadow:SO}}>
-                          <span style={{fontSize:11,color:DIM,fontWeight:700,minWidth:48}}>{fmtS(b.date)}</span>
-                          <span style={{fontSize:11,color:BLUE,fontWeight:700,minWidth:34}}>{b.time}</span>
-                          <span style={{flex:1,fontSize:11,color:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.svc}</span>
-                          <span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:5,background:bg,color:c}}>{icon}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* notes if exist */}
-              {s.notes && (
-                <div style={{background:BG_DEEP,borderRadius:9,padding:"8px 11px",boxShadow:SI,fontSize:12,color:DIM,lineHeight:1.5}}>
-                  📝 {s.notes}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
     </div>
+  );
+}
+
+// ─── STUDENT DETAIL SHEET ────────────────────────────────────────
+function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock }) {
+  const { BG_DEEP, SURF_HI, SURFACE, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, GOLD, RED, SO, SI, SHADE, GLOW } = useContext(ThemeContext);
+  const shade = a => `rgba(${SHADE},${a})`;
+  const glow  = a => `rgba(${GLOW},${a})`;
+
+  const [closing,       setClosing]      = useState(false);
+  const [editMode,      setEditMode]     = useState(false);
+  const [confirmDel,    setConfirmDel]   = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+
+  const typeColor = s.type === "school" ? GREEN : GOLD;
+  const typeLabel = s.type === "school" ? "Автошкола" : "Приватний";
+  const phone     = (s.phone||"").replace(/\D/g,"");
+  const ini       = s.name.split(" ").map(w=>w[0]).slice(0,2).join("");
+  const barColor  = s.blocked ? RED : typeColor;
+
+  const _close = () => setClosing(true);
+
+  return (
+    <>
+      <style>{`
+        @keyframes _sd-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes _sd-down{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+        @keyframes _sd-bg-in{from{opacity:0}to{opacity:1}}
+        @keyframes _sd-bg-out{from{opacity:1}to{opacity:0}}
+      `}</style>
+      <div
+        onClick={closing ? undefined : _close}
+        style={{
+          position:"fixed",inset:0,zIndex:200,
+          background:shade(0.55),backdropFilter:"blur(8px)",
+          display:"flex",alignItems:"flex-end",justifyContent:"center",
+          animation:closing ? `_sd-bg-out 0.26s ease-in forwards` : `_sd-bg-in 0.2s ease-out`,
+        }}
+      >
+        <div
+          onClick={e=>e.stopPropagation()}
+          onAnimationEnd={closing ? ()=>{
+            setClosing(false);
+            if (pendingDelete) onDelete(s.id);
+            onClose();
+          } : undefined}
+          style={{
+            width:"100%",maxWidth:480,background:BG_DEEP,
+            borderRadius:"24px 24px 0 0",
+            boxShadow:`0 -2px 0 ${glow(0.08)},0 -16px 60px ${shade(0.8)}`,
+            display:"flex",flexDirection:"column",
+            maxHeight:"92vh",overflow:"hidden",
+            pointerEvents:closing?"none":undefined,
+            animation:closing ? `_sd-down 0.26s ease-in forwards` : `_sd-up 0.38s cubic-bezier(0.34,1.56,0.64,1)`,
+          }}
+        >
+          {/* Handle */}
+          <div style={{width:36,height:4,borderRadius:2,background:glow(0.15),margin:"10px auto 0",flexShrink:0}}/>
+
+          {/* Header */}
+          <div style={{
+            display:"flex",alignItems:"center",gap:10,padding:"14px 16px 12px",
+            borderBottom:`1px solid ${BORDER}`,flexShrink:0,
+          }}>
+            <div className="icon3d" style={{
+              width:42,height:42,borderRadius:13,flexShrink:0,
+              background:`linear-gradient(145deg,${barColor}44,${barColor}18)`,
+              fontSize:15,fontWeight:900,color:barColor,
+            }}>{ini}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:15,fontWeight:800,color:s.blocked?DIM:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                {s.name}{s.blocked && <span style={{fontSize:10,color:RED,marginLeft:6}}>🚫</span>}
+              </div>
+              <div style={{fontSize:11,color:typeColor,fontWeight:700,marginTop:2}}>{typeLabel}</div>
+            </div>
+            <div onClick={_close} style={{
+              width:28,height:28,borderRadius:8,background:glow(0.07),
+              display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:"pointer",color:FAINT,fontSize:14,userSelect:"none",flexShrink:0,
+            }}>✕</div>
+          </div>
+
+          {/* Body (scrollable) */}
+          <div style={{flex:1,overflowY:"auto",padding:"14px 16px 28px",display:"flex",flexDirection:"column",gap:10}}>
+
+            {editMode ? (
+              <EditForm s={s} onSave={patch=>{onUpdate(s.id,patch);setEditMode(false);}} onCancel={()=>setEditMode(false)}/>
+            ) : confirmDel ? (
+              <div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,padding:"14px 14px",display:"flex",flexDirection:"column",gap:9}}>
+                <div style={{fontSize:13,fontWeight:800,color:"#fca5a5"}}>Видалити учня назавжди?</div>
+                <div style={{fontSize:12,color:DIM}}>Цю дію не можна скасувати.</div>
+                <div style={{display:"flex",gap:7}}>
+                  <button onClick={()=>{setPendingDelete(true);_close();}} style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:"linear-gradient(145deg,rgba(239,68,68,.5),rgba(185,28,28,.4))",color:"#fff",fontSize:13,fontWeight:700,boxShadow:SO,fontFamily:"inherit"}}>Так, видалити</button>
+                  <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO,fontFamily:"inherit"}}>Скасувати</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Phone + discount */}
+                <div style={{display:"flex",gap:8}}>
+                  <div style={{flex:1,background:glow(0.04),borderRadius:10,padding:"9px 12px",border:`1px solid ${BORDER}`}}>
+                    <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Телефон</div>
+                    <div style={{fontSize:14,fontWeight:700,color:TEXT}}>{s.phone||"—"}</div>
+                  </div>
+                  <div style={{width:88,background:glow(0.04),borderRadius:10,padding:"9px 12px",border:`1px solid ${BORDER}`,textAlign:"center"}}>
+                    <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Знижка</div>
+                    <div style={{fontSize:18,fontWeight:900,color:s.discount>0?GOLD:DIM}}>{s.discount||0}%</div>
+                  </div>
+                </div>
+
+                {/* Type + progress */}
+                <div style={{background:glow(0.04),borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
+                  <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:s.type==="school"?9:0}}>
+                    <span style={{fontSize:11,fontWeight:800,color:typeColor}}>{typeLabel}</span>
+                    {s.type==="school" && <span style={{fontSize:10,color:FAINT}}>· {s.hours+(s.hoursOffset||0)}/40 год</span>}
+                  </div>
+                  {s.type==="school" && <Progress hours={s.hours} offset={s.hoursOffset||0}/>}
+                </div>
+
+                {/* Hours offset (school only) */}
+                {s.type==="school" && (
+                  <div style={{background:glow(0.04),borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
+                    <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:7}}>Додати години</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <button onClick={()=>onUpdate(s.id,{hoursOffset:Math.max(0,(s.hoursOffset||0)-1)})}
+                        style={{width:32,height:32,borderRadius:9,border:"none",cursor:"pointer",flexShrink:0,background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:TEXT,fontSize:20,fontWeight:700,boxShadow:SO,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,fontFamily:"inherit"}}>−</button>
+                      <div style={{flex:1,textAlign:"center"}}>
+                        <span style={{fontSize:22,fontWeight:900,color:(s.hoursOffset||0)>0?GREEN:FAINT}}>{s.hoursOffset||0}</span>
+                        <span style={{fontSize:11,color:FAINT,marginLeft:5}}>год</span>
+                      </div>
+                      <button onClick={()=>onUpdate(s.id,{hoursOffset:Math.min(39,(s.hoursOffset||0)+1)})}
+                        style={{width:32,height:32,borderRadius:9,border:"none",cursor:"pointer",flexShrink:0,background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:TEXT,fontSize:20,fontWeight:700,boxShadow:SO,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,fontFamily:"inherit"}}>+</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
+                  <Btn icon={ICONS.phone}    label="Дзвонити"   onClick={()=>{window.location.href=`tel:${s.phone}`;}}                    color={GREEN}/>
+                  <Btn icon={ICONS.viber}    label="Вайбер"     onClick={()=>{window.location.href=`viber://chat?number=%2B${phone}`;}}    color={BLUE}/>
+                  <Btn icon={ICONS.telegram} label="Телеграм"   onClick={()=>{window.open(`https://t.me/+${phone}`,"_blank");}}            color="#5b9bff"/>
+                  <Btn icon={ICONS.chat}     label="Чат"        onClick={()=>{navTo("chats");_close();}}                                   color={BLUE}/>
+                  <Btn icon={ICONS.edit}     label="Редагувати" onClick={()=>setEditMode(true)}/>
+                  <Btn icon={s.blocked?ICONS.unban:ICONS.ban} label={s.blocked?"Розблок.":"Заблок."} onClick={()=>onBlock(s.id)} danger={!s.blocked}/>
+                </div>
+
+                {/* VIP toggle */}
+                <div onClick={()=>onUpdate(s.id,{isVip:!s.isVip})} style={{
+                  display:"flex",alignItems:"center",gap:10,cursor:"pointer",borderRadius:10,padding:"10px 13px",
+                  background:s.isVip?"rgba(168,85,247,0.12)":glow(0.04),
+                  border:s.isVip?"1px solid rgba(168,85,247,0.35)":`1px solid ${BORDER}`,
+                }}>
+                  <span style={{fontSize:16,lineHeight:1}}>👑</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:12,fontWeight:700,color:s.isVip?"#c084fc":TEXT}}>VIP учень</div>
+                    <div style={{fontSize:10,color:FAINT,marginTop:2}}>{s.isVip?"Має доступ до VIP слотів":"Без доступу до VIP слотів"}</div>
+                  </div>
+                  <div style={{width:36,height:20,borderRadius:10,position:"relative",background:s.isVip?"linear-gradient(145deg,#a855f7,#7c3aed)":glow(0.08),transition:"background .2s",flexShrink:0}}>
+                    <div style={{position:"absolute",top:2,left:s.isVip?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {s.notes && (
+                  <div style={{background:glow(0.04),borderRadius:10,padding:"9px 12px",border:`1px solid ${BORDER}`,fontSize:12,color:DIM,lineHeight:1.5}}>📝 {s.notes}</div>
+                )}
+
+                {/* Booking history */}
+                {(s.bookings||[]).length > 0 && (
+                  <div>
+                    <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:6}}>Історія записів</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {(s.bookings||[]).map((b,i)=>{
+                        const [c,bg] = b.status==="confirmed"?[GREEN,"rgba(126,217,87,.1)"]:b.status==="noshow"?[RED,"rgba(239,68,68,.1)"]:[ACCENT,"rgba(255,90,60,.1)"];
+                        const icon = b.status==="confirmed"?"✓":b.status==="noshow"?"✕":"⏳";
+                        return (
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,borderRadius:9,padding:"7px 11px",boxShadow:SO}}>
+                            <span style={{fontSize:11,color:DIM,fontWeight:700,minWidth:48}}>{fmtS(b.date)}</span>
+                            <span style={{fontSize:11,color:BLUE,fontWeight:700,minWidth:34}}>{b.time}</span>
+                            <span style={{flex:1,fontSize:11,color:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.svc}</span>
+                            <span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:5,background:bg,color:c}}>{icon}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Delete */}
+                <button onClick={()=>setConfirmDel(true)} style={{
+                  width:"100%",padding:"11px",borderRadius:11,border:"1px solid rgba(239,68,68,0.25)",
+                  cursor:"pointer",background:"rgba(239,68,68,0.08)",color:"#fca5a5",
+                  fontSize:13,fontWeight:700,fontFamily:"inherit",marginTop:4,
+                }}>Видалити учня</button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -445,15 +490,16 @@ export default function StudentsView() {
 .btn span{font-size:9px;font-weight:700;letter-spacing:.2px}
 .icon3d{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;position:relative;overflow:hidden;flex-shrink:0;box-shadow:-2px 4px 10px rgba(0,0,0,0.5),inset 1px 1px 0 rgba(255,255,255,0.25),inset -1px -1px 0 rgba(0,0,0,0.3)}
 .icon3d::before{content:'';position:absolute;top:0;right:0;width:60%;height:50%;background:radial-gradient(ellipse at top right,rgba(255,255,255,0.4) 0%,transparent 70%);pointer-events:none}
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .sheet{animation:sheetUp .24s cubic-bezier(.32,.72,0,1) both}
 `;
-  const [students,   setStudents]   = useState([]);
-  const [expanded,   setExpanded]   = useState(new Set());
-  const [search,     setSearch]     = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [loading,    setLoading]    = useState(true);
-  const [showNew,    setShowNew]    = useState(false);
+  const [students,      setStudents]      = useState([]);
+  const [detailStudent, setDetailStudent] = useState(null);
+  const [search,        setSearch]        = useState("");
+  const [filterType,    setFilterType]    = useState("all");
+  const [loading,       setLoading]       = useState(true);
+  const [showNew,       setShowNew]       = useState(false);
 
   useEffect(() => {
     const unsub = onValue(ref(db, "users"), snap => {
@@ -477,8 +523,6 @@ export default function StudentsView() {
     });
     return unsub;
   }, []);
-
-  const toggle = id => setExpanded(e => { const n=new Set(e); n.has(id)?n.delete(id):n.add(id); return n; });
 
   const block = id => {
     const s = students.find(x => x.id === id);
@@ -506,7 +550,6 @@ export default function StudentsView() {
 
   const deleteStudent = id => {
     setStudents(ss => ss.filter(x => x.id !== id));
-    setExpanded(e => { const n = new Set(e); n.delete(id); return n; });
     remove(ref(db, `users/${id}`)).catch(() => {});
   };
 
@@ -523,7 +566,6 @@ export default function StudentsView() {
       tsc:      data.type==="school"?(data.tsc||""):"",
     });
     setShowNew(false);
-    setExpanded(e => new Set([...e, newRef.key]));
   };
 
   const q = search.toLowerCase();
@@ -533,6 +575,8 @@ export default function StudentsView() {
       (filterType==="all" || s.type===filterType)
     )
     .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+
+  const liveDetail = detailStudent ? students.find(x=>x.id===detailStudent.id) : null;
 
   return (
     <>
@@ -566,13 +610,7 @@ export default function StudentsView() {
 
         {/* list */}
         {list.map(s=>(
-          <Card key={s.id} s={s}
-            expanded={expanded.has(s.id)}
-            onToggle={toggle}
-            onBlock={block}
-            onUpdate={updateStudent}
-            onDelete={deleteStudent}
-          />
+          <StudentCard key={s.id} s={s} onSelect={s=>setDetailStudent(s)}/>
         ))}
 
         {loading && (
@@ -589,7 +627,7 @@ export default function StudentsView() {
         )}
       </div>
 
-      {/* ── FAB +Учень (через портал у body, щоб не скролився) ── */}
+      {/* ── FAB +Учень ── */}
       {createPortal(
         <button onClick={()=>setShowNew(true)} aria-label="Додати учня" style={{
           position:"fixed",right:18,bottom:104,zIndex:45,
@@ -623,6 +661,17 @@ export default function StudentsView() {
             <NewStudentForm onSave={createStudent} onCancel={()=>setShowNew(false)}/>
           </div>
         </div>
+      )}
+
+      {/* ── Student detail sheet ── */}
+      {liveDetail && (
+        <StudentDetailSheet
+          s={liveDetail}
+          onClose={()=>setDetailStudent(null)}
+          onUpdate={updateStudent}
+          onDelete={deleteStudent}
+          onBlock={block}
+        />
       )}
     </>
   );
