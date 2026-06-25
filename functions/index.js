@@ -360,7 +360,7 @@ exports.onSlotFreed = onValueWritten(
     if (before?.available === true) return; // вже був вільний — не дублюємо
     if (!after || after.available !== true) return;
 
-    const { date } = event.params;
+    const { date, slotId } = event.params;
 
     // Тільки найближчі 10 днів
     const slotDate = new Date(date + "T00:00:00");
@@ -377,6 +377,18 @@ exports.onSlotFreed = onValueWritten(
     await db.ref(`slotFreedQueue/${slotKey}`).set({
       date, time, sendAfter: Date.now() + 5 * 60 * 1000,
     }).catch(() => {});
+
+    // Скасувати phone-only бронювання якщо слот звільнився адміном
+    const slotBookingSnap = await db.ref(`slotBookings/${date}/${slotId}`).get();
+    if (slotBookingSnap.exists()) {
+      const { phone, bookingId } = slotBookingSnap.val();
+      if (phone && bookingId) {
+        await db.ref(`bookings_by_phone/${phone}/${bookingId}`).update({
+          status: "cancelled", cancelledAt: Date.now(), cancelledBy: "admin"
+        }).catch(() => {});
+        await db.ref(`slotBookings/${date}/${slotId}`).remove().catch(() => {});
+      }
+    }
   }
 );
 
