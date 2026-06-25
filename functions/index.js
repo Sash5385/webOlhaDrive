@@ -399,9 +399,9 @@ exports.flushSlotFreedQueue = onSchedule(
     });
     if (!tasks.length) return;
 
-    // Студенти що хоч раз бронювали (індекс, замість повного скану bookings)
-    const activeSnap = await db.ref("activeStudents").get();
-    const notifyUids = activeSnap.exists() ? Object.keys(activeSnap.val()) : [];
+    // Всі студенти з увімкненими push-сповіщеннями
+    const tokenSnap = await db.ref("studentTokens").get();
+    const notifyUids = tokenSnap.exists() ? Object.keys(tokenSnap.val()) : [];
     if (!notifyUids.length) return;
 
     // Rate-limit: не слати одному студенту частіше ніж раз на 30 хвилин
