@@ -52,11 +52,9 @@ const CATEGORIES = [
 ];
 
 const CHANNELS = [
-  { id:"chat",     label:"Чат",      emoji:"💬", color:BLUE   },
-  { id:"sms",      label:"SMS",      emoji:"📱", color:GREEN  },
-  { id:"viber",    label:"Viber",    emoji:"📲", color:PURPLE },
-  { id:"telegram", label:"Telegram", emoji:"✈️", color:"#2AABEE" },
-  { id:"push",     label:"Push",     emoji:"🔔", color:GOLD   },
+  { id:"chat",  label:"Чат",  emoji:"💬", color:BLUE   },
+  { id:"sms",   label:"SMS",  emoji:"📱", color:GREEN  },
+  { id:"viber", label:"Viber",emoji:"📲", color:PURPLE },
 ];
 
 const TRIGGERS = [
@@ -71,7 +69,7 @@ const TRIGGERS = [
 const VARS = ["{ім'я}","{дата}","{час}","{послуга}","{ціна}","{ТСЦ}","{інструктор}"];
 
 const INIT_TEMPLATES = [
-  { id:"t1", catId:"reminder", title:"Нагадування за 24 год", channel:"push", trigger:"auto_reminder", active:true,
+  { id:"t1", catId:"reminder", title:"Нагадування за 24 год", channel:"chat", trigger:"auto_reminder", active:true,
     body:"Привіт, {ім'я}! 🔔 Нагадуємо про урок завтра {дата} о {час}. Чекаємо на тебе! Якщо потрібно перенести — напиши нам." },
   { id:"t2", catId:"reminder", title:"Нагадування за 2 год",  channel:"sms",  trigger:"auto_reminder", active:true,
     body:"OlhaDrive: урок сьогодні о {час}. Адреса: Верховинна 44. Інструктор: {інструктор}" },
@@ -81,7 +79,7 @@ const INIT_TEMPLATES = [
     body:"❌ {ім'я}, на жаль урок {дата} о {час} скасовано. Якщо хочеш записатись на інший час — напиши нам або відкрий додаток." },
   { id:"t5", catId:"welcome",  title:"Вітання нового учня",   channel:"chat", trigger:"auto_welcome",  active:true,
     body:"👋 Привіт, {ім'я}! Раді бачити тебе в OlhaDrive!\nЯ — {інструктор}, твій інструктор.\nЗаписуйся на перший урок і побачимось на дорозі! 🚗" },
-  { id:"t6", catId:"queue",    title:"Пропозиція вільного слоту", channel:"push", trigger:"auto_queue", active:true,
+  { id:"t6", catId:"queue",    title:"Пропозиція вільного слоту", channel:"chat", trigger:"auto_queue", active:true,
     body:"⏳ {ім'я}, з'явився вільний урок {дата} о {час}! Підтвердити запис → відкрий додаток." },
   { id:"t7", catId:"custom",   title:"Прохання про відгук",   channel:"sms",  trigger:"manual",        active:true,
     body:"Привіт, {ім'я}! Як пройшов урок {дата}? Буду вдячний за відгук 🙏" },
