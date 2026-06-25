@@ -88,6 +88,17 @@
     "recentStudents": {
       ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       ".write": "auth != null"
+    },
+    "bookings_by_phone": {
+      ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
+      "$phone": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
+      }
+    },
+    "slotBookings": {
+      ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
     }
   }
 }

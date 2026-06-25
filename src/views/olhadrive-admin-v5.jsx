@@ -2576,6 +2576,18 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           };
           const uid = b.userId || "admin";
           update(ref(db, `bookings/${uid}/${b.id}`), fbData).catch(()=>{});
+          if (!b.userId && b.phone) {
+            const phone = b.phone.replace(/\D/g, '');
+            if (phone) {
+              update(ref(db, `bookings_by_phone/${phone}/${b.id}`), fbData).catch(()=>{});
+              for (let i = 0; i < b.durMin; i += 30) {
+                const slotMin = b.startMin + i;
+                const sh = String(Math.floor(slotMin / 60)).padStart(2, '0');
+                const sm = String(slotMin % 60).padStart(2, '0');
+                update(ref(db, `slotBookings/${b.date}/slot${sh}${sm}`), {phone, bookingId: b.id}).catch(()=>{});
+              }
+            }
+          }
         }
         if (b.date && b.startMin !== undefined && b.durMin) {
           const slotUpd = {};
@@ -3961,6 +3973,20 @@ export default function App() {
         // Скасовуємо обидва можливі вузли (дубль міг з'явитись від старого коду)
         const keys = [...new Set([b._fbKey, b.id].filter(Boolean))];
         keys.forEach(k => update(ref(db, `bookings/${b.userId}/${k}`), { status:"cancelled", cancelledAt:Date.now(), cancelledBy:"admin" }).catch(()=>{}));
+        if (b.userId === "admin" && b.phone) {
+          const phone = b.phone.replace(/\D/g, '');
+          if (phone) {
+            keys.forEach(k => update(ref(db, `bookings_by_phone/${phone}/${k}`), { status:"cancelled", cancelledAt:Date.now(), cancelledBy:"admin" }).catch(()=>{}));
+            if (b.date && b.startMin !== undefined && b.durMin) {
+              for (let i = 0; i < b.durMin; i += 30) {
+                const slotMin = b.startMin + i;
+                const sh = String(Math.floor(slotMin/60)).padStart(2,'0');
+                const sm = String(slotMin%60).padStart(2,'0');
+                remove(ref(db, `slotBookings/${b.date}/slot${sh}${sm}`)).catch(()=>{});
+              }
+            }
+          }
+        }
         setBookings(bs=>bs.map(x=>x.id===b.id?{...x,status:"cancelled"}:x));
       } else {
         setBookings(bs=>bs.filter(x=>x.id!==b.id));
@@ -3985,6 +4011,18 @@ export default function App() {
       };
       const uid = b.userId || "admin";
       update(ref(db, `bookings/${uid}/${b.id}`), fbData).catch(()=>{});
+      if (!b.userId && b.phone) {
+        const phone = b.phone.replace(/\D/g, '');
+        if (phone) {
+          update(ref(db, `bookings_by_phone/${phone}/${b.id}`), fbData).catch(()=>{});
+          for (let i = 0; i < b.durMin; i += 30) {
+            const slotMin = b.startMin + i;
+            const sh = String(Math.floor(slotMin / 60)).padStart(2, '0');
+            const sm = String(slotMin % 60).padStart(2, '0');
+            update(ref(db, `slotBookings/${b.date}/slot${sh}${sm}`), {phone, bookingId: b.id}).catch(()=>{});
+          }
+        }
+      }
     }
     if (b.date && b.startMin !== undefined && b.durMin) {
       const slotUpd = {};
