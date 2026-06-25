@@ -226,9 +226,9 @@ const Card = ({children, style={}}) => {
 };
 
 const Inset = ({children, style={}}) => {
-  const { BG_DEEP, SI } = useContext(ThemeContext);
+  const { SURF_HI, SURFACE, SI } = useContext(ThemeContext);
   return (
-    <div style={{background:BG_DEEP, borderRadius:10, boxShadow:SI, ...style}}>{children}</div>
+    <div style={{background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`, borderRadius:10, boxShadow:SI, ...style}}>{children}</div>
   );
 };
 
