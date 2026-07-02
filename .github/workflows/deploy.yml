@@ -20,16 +20,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install functions dependencies
-        run: npm ci --prefix functions
-
       - name: Build
         run: npm run build
 
-      - name: Deploy to Firebase Hosting, Database Rules and Functions
+      - name: Deploy to Firebase Hosting and Database Rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: |
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
-          npx firebase-tools deploy --only hosting:admin,database,functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
+          npx firebase-tools deploy --only hosting:admin,database --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
