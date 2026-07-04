@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useMemo, useContext } from "react";
 import { ref, update, get, onValue, off, remove, push as fbPush } from "firebase/database";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 
 import { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, SO, SI, ThemeContext } from "../theme.js";
 import { useFX, panel, SCRIM, Modal as UIModal } from "../ui.jsx";
@@ -3861,6 +3861,184 @@ function SettingsView({ settings, setSettings }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// TEMPLATES VIEW — редагування шаблонів пушів + лог
+// ═══════════════════════════════════════════════════════════════
+function TemplatesView() {
+  const { glow, ink } = useFX();
+  const ADMIN_UID = "N02ZGsiO4TOLE5lPfHuLr5iYWi92";
+
+  const DEFAULTS = {
+    booking_confirmed: { title:"✅ Запис підтверджено", body:"{name}, чекаємо тебе {daySlot} 🎯" },
+    booking_cancelled: { title:"❌ Запис скасовано",   body:"Запис {dateLabel} о {time} відмінено. Оберіть інший час ↩️" },
+    lesson_reminder:   { title:"⏰ Нагадування про урок", body:"{name}, завтра урок о {time} 🚗 Чекаємо!" },
+  };
+  const TMETA = [
+    { type:"booking_confirmed", label:"✅ Підтвердження запису",
+      vars:["{name}","{daySlot}","{time}","{date}"],
+      sample:{ name:"Маргарита", daySlot:"понеділок 7 липня о 10:00", time:"10:00", date:"2025-07-07", dateLabel:"7 липня" } },
+    { type:"booking_cancelled", label:"❌ Скасування запису",
+      vars:["{name}","{dateLabel}","{time}","{date}"],
+      sample:{ name:"Маргарита", daySlot:"понеділок 7 липня о 14:00", time:"14:00", date:"2025-07-07", dateLabel:"7 липня" } },
+    { type:"lesson_reminder",   label:"⏰ Нагадування про урок",
+      vars:["{name}","{time}","{date}"],
+      sample:{ name:"Маргарита", daySlot:"завтра о 10:00", time:"10:00", date:"2025-07-07", dateLabel:"7 липня" } },
+  ];
+  const applyV = (str, vars) => (str||"").replace(/\{(\w+)\}/g, (_,k) => vars[k] ?? `{${k}}`);
+
+  const [drafts,   setDrafts]   = useState({ ...DEFAULTS });
+  const [saved,    setSaved]    = useState({});
+  const [testSent, setTestSent] = useState({});
+  const [log,      setLog]      = useState([]);
+
+  useEffect(() => {
+    const r = ref(db, "pushTemplates");
+    const unsub = onValue(r, snap => {
+      const data = snap.val() || {};
+      setDrafts(prev => {
+        const next = { ...prev };
+        for (const type of Object.keys(DEFAULTS)) {
+          if (data[type]) next[type] = { title: data[type].title || DEFAULTS[type].title, body: data[type].body || DEFAULTS[type].body };
+        }
+        return next;
+      });
+    });
+    return () => off(r, "value", unsub);
+  }, []);
+
+  useEffect(() => {
+    const r = ref(db, "pushLog");
+    const unsub = onValue(r, snap => {
+      if (!snap.exists()) { setLog([]); return; }
+      const items = [];
+      snap.forEach(child => items.push({ id: child.key, ...child.val() }));
+      items.sort((a, b) => (b.sentAt||0) - (a.sentAt||0));
+      setLog(items.slice(0, 50));
+    });
+    return () => off(r, "value", unsub);
+  }, []);
+
+  const save = async (type) => {
+    await update(ref(db, `pushTemplates/${type}`), drafts[type]).catch(()=>{});
+    setSaved(s => ({ ...s, [type]:true }));
+    setTimeout(() => setSaved(s => ({ ...s, [type]:false })), 2000);
+  };
+
+  const sendTest = async (type) => {
+    const meta  = TMETA.find(m => m.type === type);
+    const draft = drafts[type];
+    await fbPush(ref(db, "adminPush"), {
+      uid: ADMIN_UID,
+      title: applyV(draft.title, meta.sample),
+      body:  applyV(draft.body,  meta.sample),
+      url: "/cabinet", test: true,
+    });
+    setTestSent(s => ({ ...s, [type]:true }));
+    setTimeout(() => setTestSent(s => ({ ...s, [type]:false })), 3000);
+  };
+
+  const fmtTs = ts => {
+    if (!ts) return "—";
+    const d = new Date(ts);
+    return d.toLocaleDateString("uk",{day:"numeric",month:"short"}) + " " +
+           d.toLocaleTimeString("uk",{hour:"2-digit",minute:"2-digit"});
+  };
+  const TYPE_LABELS = {
+    booking_confirmed:"✅ Підтверд.", booking_cancelled:"❌ Скасування",
+    lesson_reminder:"⏰ Нагадування", admin:"💬 Особистий",
+    slot_free:"🚗 Вільний слот", queue_offer:"🎉 Черга",
+  };
+
+  const inputSt = {
+    width:"100%", boxSizing:"border-box",
+    background:`linear-gradient(135deg,${BG_DEEP},${SURFACE_LO})`,
+    border:"none", outline:"none", color:TEXT, fontSize:13,
+    padding:"10px 13px", borderRadius:12, boxShadow:SHADOW_IN,
+    fontFamily:"inherit", resize:"none",
+  };
+  const btnBase = { border:"none", cursor:"pointer", borderRadius:10, padding:"7px 14px", fontSize:12, fontWeight:700 };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+      {TMETA.map(meta => {
+        const draft = drafts[meta.type] || DEFAULTS[meta.type];
+        return (
+          <Card key={meta.type} style={{padding:20}}>
+            <SectionTitle right={
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={()=>sendTest(meta.type)} style={{
+                  ...btnBase,
+                  background: testSent[meta.type] ? `linear-gradient(165deg,${GREEN}cc,${GREEN}88)` : `linear-gradient(135deg,${SURFACE_HI},${SURFACE})`,
+                  color: testSent[meta.type] ? "#fff" : TEXT_DIM, boxShadow:SHADOW_OUT,
+                }}>{testSent[meta.type] ? "✓ Надіслано" : "Тест →"}</button>
+                <button onClick={()=>save(meta.type)} style={{
+                  ...btnBase,
+                  background:`linear-gradient(165deg,${ACCENT_HI},${ACCENT})`,
+                  color:"#fff", boxShadow:`inset 1px 1px 0 ${glow(0.25)}`,
+                  opacity: saved[meta.type] ? 0.7 : 1,
+                }}>{saved[meta.type] ? "✓ Збережено" : "Зберегти"}</button>
+              </div>
+            }>{meta.label}</SectionTitle>
+
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,color:TEXT_FAINT,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:5}}>Заголовок</div>
+              <input value={draft.title}
+                onChange={e=>setDrafts(s=>({...s,[meta.type]:{...s[meta.type],title:e.target.value}}))}
+                style={inputSt}/>
+            </div>
+
+            <div style={{marginBottom:10}}>
+              <div style={{fontSize:10,color:TEXT_FAINT,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:5}}>Текст</div>
+              <textarea rows={2} value={draft.body}
+                onChange={e=>setDrafts(s=>({...s,[meta.type]:{...s[meta.type],body:e.target.value}}))}
+                style={inputSt}/>
+            </div>
+
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:12,alignItems:"center"}}>
+              {meta.vars.map(v=>(
+                <span key={v}
+                  onClick={()=>setDrafts(s=>({...s,[meta.type]:{...s[meta.type],body:s[meta.type].body+v}}))}
+                  style={{cursor:"pointer",fontSize:11,fontFamily:"monospace",background:glow(0.07),color:ACCENT,borderRadius:6,padding:"2px 8px",border:`1px solid ${glow(0.14)}`,userSelect:"none"}}
+                >{v}</span>
+              ))}
+              <span style={{fontSize:11,color:TEXT_FAINT}}>— вставити змінну</span>
+            </div>
+
+            <div style={{padding:"12px 14px",borderRadius:14,background:ink(0.04),border:`1px solid ${ink(0.06)}`}}>
+              <div style={{fontSize:10,color:TEXT_FAINT,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:6}}>Превью</div>
+              <div style={{fontSize:13,fontWeight:700,color:TEXT,marginBottom:2}}>{applyV(draft.title,meta.sample)}</div>
+              <div style={{fontSize:12,color:TEXT_DIM,lineHeight:1.4}}>{applyV(draft.body,meta.sample)}</div>
+            </div>
+          </Card>
+        );
+      })}
+
+      <Card style={{padding:20}}>
+        <SectionTitle>Лог надісланих пушів</SectionTitle>
+        {log.length===0 ? (
+          <div style={{fontSize:13,color:TEXT_DIM,textAlign:"center",padding:"20px 0"}}>Поки пусто — пуші з'являться тут після відправки</div>
+        ) : log.map((item,i)=>(
+          <div key={item.id} style={{
+            display:"flex",gap:10,padding:"10px 0",alignItems:"flex-start",
+            borderBottom: i<log.length-1 ? `1px solid ${BORDER}` : "none",
+          }}>
+            <div style={{fontSize:11,color:TEXT_FAINT,flexShrink:0,minWidth:76,paddingTop:1}}>{fmtTs(item.sentAt)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:12,fontWeight:700,color:TEXT,marginBottom:2}}>{item.title}</div>
+              <div style={{fontSize:11,color:TEXT_DIM,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{item.body}</div>
+            </div>
+            <div style={{fontSize:11,color:TEXT_DIM,flexShrink:0,textAlign:"right"}}>
+              {TYPE_LABELS[item.type]||item.type}
+              {item.recipients>1 && <div style={{fontSize:10,color:TEXT_FAINT}}>{item.recipients} учнів</div>}
+            </div>
+          </div>
+        ))}
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // STUB for other tabs
 // ═══════════════════════════════════════════════════════════════
 function StubView({ title }) {
@@ -4060,7 +4238,8 @@ export default function App() {
                                 onSlotClick={setSelectedBooking}
                                 onEmptySlotClick={setNewBookingData}
                                 bookings={bookings} setBookings={setBookings}/>;
-      case "settings":  return <SettingsView settings={settings} setSettings={setSettingsAndSave}/>;
+      case "settings":   return <SettingsView settings={settings} setSettings={setSettingsAndSave}/>;
+      case "templates":  return <TemplatesView/>;
       default: return <StubView title={TITLES[tab]}/>;
     }
   };
