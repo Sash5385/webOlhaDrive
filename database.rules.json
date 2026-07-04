@@ -85,6 +85,10 @@
       ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
     },
+    "adminPush": {
+      ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
+    },
     "recentStudents": {
       ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       ".write": "auth != null"

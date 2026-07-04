@@ -26,6 +26,7 @@ const ICONS = {
   search:   Svg(<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>, 15, "#5a5c62"),
   filter:   Svg(<><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>, 16),
   trash:    Svg(<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></>, 18, "white", 2),
+  bell:     Svg(<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>),
 };
 
 
@@ -286,6 +287,33 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock }) {
   const [editMode,      setEditMode]     = useState(false);
   const [confirmDel,    setConfirmDel]   = useState(false);
   const [pendingDelete, setPendingDelete] = useState(false);
+  const [pushOpen,      setPushOpen]     = useState(false);
+  const [pushTitle,     setPushTitle]    = useState("Повідомлення");
+  const [pushBody,      setPushBody]     = useState("");
+  const [pushSending,   setPushSending]  = useState(false);
+  const [pushSent,      setPushSent]     = useState(false);
+  const [pushError,     setPushError]    = useState(null);
+
+  // Персональний пуш учню: пишемо запит у adminPush/{id}, cloud function onAdminPush
+  // читає токен учня й шле FCM (плюс внутрішнє сповіщення в NotifTab).
+  const sendPushToStudent = async () => {
+    if (!pushBody.trim() || pushSending) return;
+    setPushSending(true); setPushError(null);
+    try {
+      await push(ref(db, "adminPush"), {
+        uid: s.id,
+        title: pushTitle.trim() || "Повідомлення",
+        body: pushBody.trim(),
+        createdAt: Date.now(),
+      });
+      setPushSent(true);
+      setPushBody("");
+    } catch (e) {
+      setPushError("Помилка: " + e.message);
+    } finally {
+      setPushSending(false);
+    }
+  };
 
   const typeColor = s.type === "school" ? GREEN : GOLD;
   const typeLabel = s.type === "school" ? "Автошкола" : "Приватний";
@@ -369,6 +397,22 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock }) {
                   <button onClick={()=>setConfirmDel(false)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO,fontFamily:"inherit"}}>Скасувати</button>
                 </div>
               </div>
+            ) : pushOpen ? (
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{fontSize:13,fontWeight:800,color:GOLD}}>🔔 Пуш учню: {s.name}</div>
+                <input value={pushTitle} onChange={e=>{setPushTitle(e.target.value);setPushSent(false);}} placeholder="Заголовок"
+                  style={{background:glow(0.04),border:`1px solid ${BORDER}`,outline:"none",color:TEXT,fontSize:13,padding:"9px 12px",borderRadius:10,boxShadow:SI,width:"100%",boxSizing:"border-box",fontFamily:"inherit"}}/>
+                <textarea value={pushBody} onChange={e=>{setPushBody(e.target.value);setPushSent(false);}} placeholder="Текст сповіщення" rows={3}
+                  style={{background:glow(0.04),border:`1px solid ${BORDER}`,outline:"none",color:TEXT,fontSize:13,padding:"9px 12px",borderRadius:10,boxShadow:SI,width:"100%",boxSizing:"border-box",fontFamily:"inherit",resize:"vertical"}}/>
+                {pushError && <div style={{fontSize:12,color:"#fca5a5"}}>{pushError}</div>}
+                {pushSent && <div style={{fontSize:12,fontWeight:700,color:GREEN}}>✓ Надіслано</div>}
+                <div style={{display:"flex",gap:7}}>
+                  <button disabled={!pushBody.trim()||pushSending} onClick={sendPushToStudent}
+                    style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:(!pushBody.trim()||pushSending)?"default":"pointer",opacity:(!pushBody.trim()||pushSending)?0.5:1,background:`linear-gradient(145deg,${GOLD}cc,${GOLD}88)`,color:"#1a1a1a",fontSize:13,fontWeight:800,boxShadow:SO,fontFamily:"inherit"}}>{pushSending?"…":"Надіслати"}</button>
+                  <button onClick={()=>{setPushOpen(false);setPushSent(false);setPushError(null);}}
+                    style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO,fontFamily:"inherit"}}>Назад</button>
+                </div>
+              </div>
             ) : (
               <>
                 {/* Phone + discount */}
@@ -415,6 +459,7 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock }) {
                   <Btn icon={ICONS.viber}    label="Вайбер"     onClick={()=>{window.location.href=`viber://chat?number=%2B${phone}`;}}    color={BLUE}/>
                   <Btn icon={ICONS.telegram} label="Телеграм"   onClick={()=>{window.open(`https://t.me/+${phone}`,"_blank");}}            color="#5b9bff"/>
                   <Btn icon={ICONS.chat}     label="Чат"        onClick={()=>{navTo("chats");_close();}}                                   color={BLUE}/>
+                  <Btn icon={ICONS.bell}     label="Пуш"        onClick={()=>{setPushOpen(true);setPushSent(false);setPushError(null);}} color={GOLD}/>
                   <Btn icon={ICONS.edit}     label="Редагувати" onClick={()=>setEditMode(true)}/>
                   <Btn icon={s.blocked?ICONS.unban:ICONS.ban} label={s.blocked?"Розблок.":"Заблок."} onClick={()=>onBlock(s.id)} danger={!s.blocked}/>
                 </div>
