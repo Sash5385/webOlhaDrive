@@ -4057,6 +4057,163 @@ function TemplatesView() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// STUDENTS VIEW — список учнів з редагуванням даних
+// ═══════════════════════════════════════════════════════════════
+function StudentsView() {
+  const { glow, ink } = useFX();
+  const [students,     setStudents]     = useState([]);
+  const [bookingCounts,setBookingCounts]= useState({});
+  const [search,       setSearch]       = useState("");
+  const [editing,      setEditing]      = useState(null);
+  const [saving,       setSaving]       = useState(false);
+  const [savedUid,     setSavedUid]     = useState(null);
+
+  useEffect(() => {
+    const r = ref(db, "users");
+    const unsub = onValue(r, snap => {
+      const d = snap.val() || {};
+      setStudents(Object.entries(d).map(([uid, u]) => {
+        const p = u.profile || {};
+        return { uid, name: p.name||u.name||"Учень", phone: p.phone||u.phone||"", blocked: !!u.blocked };
+      }).filter(s => s.name !== "Учень" || s.phone));
+    });
+    return () => off(r, "value", unsub);
+  }, []);
+
+  useEffect(() => {
+    const r = ref(db, "bookings");
+    const unsub = onValue(r, snap => {
+      const d = snap.val() || {};
+      const counts = {};
+      for (const [uid, bks] of Object.entries(d)) {
+        counts[uid] = Object.values(bks).filter(b => b.status !== "cancelled").length;
+      }
+      setBookingCounts(counts);
+    });
+    return () => off(r, "value", unsub);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    const list = q ? students.filter(s => s.name.toLowerCase().includes(q) || s.phone.includes(q)) : [...students];
+    return list.sort((a, b) => {
+      const ca = bookingCounts[a.uid]||0, cb = bookingCounts[b.uid]||0;
+      if (ca !== cb) return cb - ca;
+      return a.name.localeCompare(b.name, "uk");
+    });
+  }, [students, search, bookingCounts]);
+
+  const saveEdit = async () => {
+    if (!editing || !editing.name.trim()) return;
+    setSaving(true);
+    try {
+      await update(ref(db, `users/${editing.uid}/profile`), {
+        name: editing.name.trim(), phone: editing.phone.trim(),
+      });
+      const bSnap = await get(ref(db, `bookings/${editing.uid}`));
+      if (bSnap.exists()) {
+        const upd = {};
+        bSnap.forEach(child => {
+          const b = child.val();
+          if (b && b.status !== "cancelled") {
+            upd[`bookings/${editing.uid}/${child.key}/studentName`] = editing.name.trim();
+            upd[`bookings/${editing.uid}/${child.key}/name`] = editing.name.trim();
+          }
+        });
+        if (Object.keys(upd).length) await update(ref(db), upd);
+      }
+      setSavedUid(editing.uid);
+      setTimeout(() => setSavedUid(null), 2500);
+      setEditing(null);
+    } catch (e) { console.error("saveEdit", e); }
+    finally { setSaving(false); }
+  };
+
+  const inputSt = {
+    width:"100%", boxSizing:"border-box",
+    background:ink(0.04), border:"none", outline:"none",
+    color:TEXT, fontSize:14, padding:"10px 13px",
+    borderRadius:12, boxShadow:SHADOW_IN, fontFamily:"inherit",
+  };
+  const btnBase = { border:"none", cursor:"pointer", borderRadius:10, padding:"8px 16px", fontSize:13, fontWeight:700 };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+
+      <div style={{
+        display:"flex", alignItems:"center", gap:8,
+        padding:"10px 14px", borderRadius:14,
+        background:ink(0.04), boxShadow:SHADOW_IN, marginBottom:2,
+      }}>
+        <span style={{fontSize:15}}>🔍</span>
+        <input placeholder="Пошук за ім'ям або телефоном..."
+          value={search} onChange={e=>setSearch(e.target.value)}
+          style={{flex:1,background:"none",border:"none",outline:"none",color:TEXT,fontSize:14}}/>
+        {search && <button onClick={()=>setSearch("")}
+          style={{background:"none",border:"none",cursor:"pointer",color:TEXT_FAINT,fontSize:18,padding:0,lineHeight:1}}>×</button>}
+      </div>
+
+      <div style={{fontSize:11,color:TEXT_FAINT,paddingLeft:4,marginBottom:2}}>{filtered.length} учнів</div>
+
+      {filtered.map(s => {
+        const isEditing = editing?.uid === s.uid;
+        const isSaved   = savedUid === s.uid;
+        const cnt = bookingCounts[s.uid] || 0;
+        const cntLabel = cnt===1?"1 запис":cnt<5?`${cnt} записи`:`${cnt} записів`;
+        return (
+          <Card key={s.uid} style={{padding:"14px 16px"}}>
+            {isEditing ? (
+              <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                <div style={{fontSize:11,color:TEXT_FAINT,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",marginBottom:2}}>Редагування</div>
+                <input placeholder="Ім'я та прізвище" value={editing.name}
+                  onChange={e=>setEditing(v=>({...v,name:e.target.value}))} style={inputSt}/>
+                <input placeholder="+380..." type="tel" value={editing.phone}
+                  onChange={e=>setEditing(v=>({...v,phone:e.target.value}))} style={inputSt}/>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setEditing(null)}
+                    style={{...btnBase,flex:1,background:ink(0.06),color:TEXT_DIM}}>Скасувати</button>
+                  <button onClick={saveEdit} disabled={saving||!editing.name.trim()}
+                    style={{...btnBase,flex:2,background:`linear-gradient(165deg,${ACCENT_HI},${ACCENT})`,color:"#fff",opacity:saving?0.7:1}}>
+                    {saving?"Збереження...":"Зберегти"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{display:"flex",alignItems:"center",gap:12}}>
+                <div style={{
+                  width:40,height:40,borderRadius:20,flexShrink:0,
+                  background:glow(0.1),
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:16,fontWeight:800,color:ACCENT,
+                  boxShadow:`inset 0 0 0 1.5px ${glow(0.2)}`,
+                }}>{s.name.trim()[0]?.toUpperCase()||"?"}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:700,color:TEXT,marginBottom:2}}>{s.name}</div>
+                  <div style={{fontSize:12,color:TEXT_DIM}}>{s.phone||"телефон не вказано"}</div>
+                  {cnt>0 && <div style={{fontSize:11,color:TEXT_FAINT,marginTop:2}}>{cntLabel}</div>}
+                  {s.blocked && <div style={{fontSize:11,color:"#ef4444",marginTop:2}}>заблокований</div>}
+                </div>
+                {isSaved && <div style={{fontSize:12,color:GREEN,fontWeight:700,flexShrink:0}}>✓</div>}
+                <button onClick={()=>setEditing({uid:s.uid,name:s.name,phone:s.phone})}
+                  style={{...btnBase,padding:"7px 12px",fontSize:12,background:glow(0.08),color:TEXT_DIM,boxShadow:SHADOW_OUT}}>
+                  ✏️ Ред.
+                </button>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+
+      {filtered.length===0 && (
+        <div style={{textAlign:"center",padding:"30px 0",color:TEXT_FAINT,fontSize:13}}>
+          {search?"Не знайдено":"Учнів поки немає"}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // STUB for other tabs
 // ═══════════════════════════════════════════════════════════════
 function StubView({ title }) {
@@ -4257,6 +4414,7 @@ export default function App() {
                                 onEmptySlotClick={setNewBookingData}
                                 bookings={bookings} setBookings={setBookings}/>;
       case "settings":   return <SettingsView settings={settings} setSettings={setSettingsAndSave}/>;
+      case "students":   return <StudentsView/>;
       case "templates":  return <TemplatesView/>;
       default: return <StubView title={TITLES[tab]}/>;
     }
