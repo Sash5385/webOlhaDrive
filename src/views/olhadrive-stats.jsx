@@ -18,6 +18,7 @@ function getDateStr(d) {
 
 function bkType(b) { return b.serviceType || b.type || "private"; }
 function bkIncome(b, svcs) {
+  if (b.manualPrice != null) return b.manualPrice;
   const svc = (svcs||[]).find(s => s.id === b.serviceId);
   const dur = b.durMin || (b.durationHours ? b.durationHours * 60 : 60);
   if (svc && svc.price && svc.duration) return Math.round((svc.price / svc.duration) * dur);
