@@ -704,7 +704,7 @@ export default function StudentsView() {
       )}
 
       {/* ── Bottom sheet: новий учень ── */}
-      {showNew && (
+      {showNew && createPortal(
         <div onClick={()=>setShowNew(false)} style={{
           position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.6)",
           display:"flex",alignItems:"flex-end",justifyContent:"center",
@@ -720,18 +720,20 @@ export default function StudentsView() {
             <div style={{width:38,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 14px"}}/>
             <NewStudentForm onSave={createStudent} onCancel={()=>setShowNew(false)}/>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── Student detail sheet ── */}
-      {liveDetail && (
+      {liveDetail && createPortal(
         <StudentDetailSheet
           s={liveDetail}
           onClose={()=>setDetailStudent(null)}
           onUpdate={updateStudent}
           onDelete={deleteStudent}
           onBlock={block}
-        />
+        />,
+        document.body
       )}
     </>
   );
