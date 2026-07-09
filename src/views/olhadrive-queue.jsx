@@ -21,6 +21,18 @@ function fmtWait(ts) {
   return h < 24 ? `${h} год` : `${Math.floor(h/24)} дн`;
 }
 
+// slotKey формату `${YYYY-MM-DD}_${H:MM}` (див. webOlhaDriveClient/src/firebase/db.js joinQueue)
+function isSlotPast(slotKey) {
+  if (!slotKey) return false;
+  const [datePart, timePart] = slotKey.split("_");
+  if (!datePart || !timePart) return false;
+  const [h, m] = timePart.split(":").map(Number);
+  const dt = new Date(datePart);
+  if (isNaN(dt.getTime())) return false;
+  dt.setHours(h||0, m||0, 0, 0);
+  return dt.getTime() < Date.now();
+}
+
 // ─── DRAG REORDER ────────────────────────────────────────────────
 function useDragReorder(items, setItems) {
   const dragIdx = useRef(null);
@@ -230,6 +242,7 @@ export default function QueueView({ settings }) {
   const [all,       setAll]       = useState([]);
   const [showAdd,   setShowAdd]   = useState(false);
   const [showArch,  setShowArch]  = useState(false);
+  const [showExp,   setShowExp]   = useState(false);
 
   const css = `
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -286,7 +299,9 @@ export default function QueueView({ settings }) {
     newArr.forEach((item,i) => update(ref(db,`queue/${item.id}`),{order:i}));
   });
 
-  const active   = all.filter(q => q.status !== "archived");
+  const isExpired = q => q.status === "waiting" && isSlotPast(q.slotKey);
+  const active   = all.filter(q => q.status !== "archived" && !isExpired(q));
+  const expired  = all.filter(q => q.status !== "archived" && isExpired(q));
   const archived = all.filter(q => q.status === "archived");
 
   const setStatus = (id, status) => update(ref(db,`queue/${id}`),{status});
@@ -372,6 +387,35 @@ export default function QueueView({ settings }) {
           </div>
           Додати до черги
         </button>
+
+        {/* ── МИНУЛІ (час слота вже пройшов) ── */}
+        {expired.length > 0 && (
+          <div style={{background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,borderRadius:13,overflow:"hidden",boxShadow:SO,border:`1px solid ${BORDER}`}}>
+            <div onClick={()=>setShowExp(v=>!v)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer"}}>
+              <div style={{width:4,alignSelf:"stretch",borderRadius:3,background:FAINT,flexShrink:0}}/>
+              <span style={{flex:1,fontSize:13,fontWeight:700,color:DIM}}>⏱ Минулі ({expired.length})</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.2" strokeLinecap="round"
+                style={{transform:showExp?"rotate(180deg)":"none",transition:"transform .2s",flexShrink:0}}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+            {showExp && (
+              <div style={{borderTop:`1px solid ${BORDER}`,padding:"8px 12px"}}>
+                {expired.map(item=>(
+                  <QueueRow
+                    key={item.id} item={item} pos="—" isDragging={false}
+                    svcMap={svcMap}
+                    onInvite={()=>invite(item.id)}
+                    onBooked={()=>booked(item.id)}
+                    onArchive={()=>archive(item.id)}
+                    onDelete={()=>del(item.id)}
+                    dragHandleProps={{}}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── ARCHIVE ── */}
         {archived.length > 0 && (
