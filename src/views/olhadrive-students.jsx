@@ -446,6 +446,17 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock }) {
                   </div>
                 </div>
 
+                {/* Registration date */}
+                {s.createdAt && (() => {
+                  const d = new Date(s.createdAt);
+                  return (
+                    <div style={{fontSize:11,color:FAINT,display:"flex",alignItems:"center",gap:5,padding:"0 2px"}}>
+                      <span>📅</span>
+                      <span>Реєстрація: {d.getDate()} {M[d.getMonth()+1]} {d.getFullYear()}</span>
+                    </div>
+                  );
+                })()}
+
                 {/* Type + progress */}
                 <div style={{background:glow(0.04),borderRadius:10,padding:"10px 12px",border:`1px solid ${BORDER}`}}>
                   <div style={{display:"flex",alignItems:"center",gap:7,marginBottom:s.type==="school"?9:0}}>
@@ -603,6 +614,7 @@ export default function StudentsView() {
           blocked:  u.blocked   || false,
           isVip:    u.isVip     || false,
           filmingConsent: p.filmingConsent,
+          createdAt: p.createdAt || u.createdAt || null,
         };
       }));
       setLoading(false);
@@ -650,6 +662,7 @@ export default function StudentsView() {
       isVip:    data.isVip||false,
       hours:    0,
       tsc:      data.type==="school"?(data.tsc||""):"",
+      createdAt: Date.now(),
     });
     setShowNew(false);
   };
