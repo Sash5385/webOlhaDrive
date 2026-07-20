@@ -32,12 +32,18 @@ messaging.onBackgroundMessage((payload) => {
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close()
+  const data = e.notification.data || {}
+  const target = data.url || 'https://admin.olhadrive.kiev.ua'
+  const fullUrl = target.startsWith('http') ? target : ('https://admin.olhadrive.kiev.ua' + target)
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) {
-        if ('focus' in c) return c.focus()
+        if (c.url.startsWith('https://admin.olhadrive.kiev.ua') && 'focus' in c) {
+          c.focus()
+          return c.navigate(fullUrl)
+        }
       }
-      if (clients.openWindow) return clients.openWindow('/')
+      if (clients.openWindow) return clients.openWindow(fullUrl)
     })
   )
 })

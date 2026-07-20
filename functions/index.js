@@ -53,19 +53,32 @@ async function inviteNextInQueue(slotKey, excludeUids = []) {
   // onQueueInvite спрацює автоматично
 }
 
+// Хелпер: побудувати deep-link на конкретний запис у розкладі адмінки
+function buildAdminLink(base, { date, time, uid, bookingId } = {}) {
+  const p = new URLSearchParams();
+  if (date && date !== "—") p.set("date", date);
+  if (time && time !== "—") p.set("time", time);
+  if (uid) p.set("uid", uid);
+  if (bookingId) p.set("bookingId", bookingId);
+  const qs = p.toString();
+  return qs ? `${base}/?${qs}` : `${base}/`;
+}
+
 // Хелпер: відправити push адміну
-async function pushAdmin(title, body) {
+async function pushAdmin(title, body, data = {}) {
   const snap = await db.ref("admin/fcmToken").get();
   const token = snap.val();
   console.log(`pushAdmin: token exists=${!!token}, title="${title}"`);
   if (!token) { console.warn("pushAdmin: no token at admin/fcmToken"); return; }
+  const link = data.url || "https://admin.olhadrive.kiev.ua";
   try {
     const result = await admin.messaging().send({
       token,
       notification: { title, body },
+      data: Object.fromEntries(Object.entries({ url: link, ...data }).map(([k, v]) => [k, String(v)])),
       webpush: {
         notification: { icon: "/favicon.svg" },
-        fcmOptions: { link: "https://admin.olhadrive.kiev.ua" },
+        fcmOptions: { link },
       },
     });
     console.log(`pushAdmin OK: ${title} messageId=${result}`);
@@ -118,12 +131,14 @@ function buildSlotUpdates(bookingData, available) {
 exports.onBookingChanged = onValueWritten(
   { ref: "bookings/{uid}/{bookingId}", region: "europe-west1" },
   async (event) => {
-    const before = event.data.before.val();
-    const after  = event.data.after.val();
-    const uid    = event.params.uid;
-    const name   = (after || before)?.studentName || "Учень";
-    const date   = (after || before)?.date || "—";
-    const time   = (after || before)?.time || "—";
+    const before     = event.data.before.val();
+    const after      = event.data.after.val();
+    const uid        = event.params.uid;
+    const bookingId  = event.params.bookingId;
+    const name       = (after || before)?.studentName || "Учень";
+    const date       = (after || before)?.date || "—";
+    const time       = (after || before)?.time || "—";
+    const adminLink  = () => buildAdminLink("https://admin.olhadrive.kiev.ua", { date, time, uid, bookingId });
 
     // Новий запис (before = null) — блокуємо слоти
     if (before === null && after) {
@@ -133,7 +148,7 @@ exports.onBookingChanged = onValueWritten(
       await db.ref(`recentStudents/${uid}`).set(Date.now()).catch(() => {});
       if (after.cancelledBy !== "admin") {
         console.log(`onBookingChanged: new booking uid=${uid}`);
-        await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`);
+        await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`, { url: adminLink() });
       }
       return;
     }
@@ -145,7 +160,7 @@ exports.onBookingChanged = onValueWritten(
       console.log(`onBookingChanged: student cancel uid=${uid}`);
       const slotUpd = buildSlotUpdates(before, true);
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
-      await pushAdmin("❌ Урок скасовано", `${name} · ${date} о ${time}`);
+      await pushAdmin("❌ Урок скасовано", `${name} · ${date} о ${time}`, { url: adminLink() });
       if (date !== "—" && time !== "—") await inviteNextInQueue(`${date}_${time}`).catch(() => {});
       return;
     }
@@ -176,7 +191,7 @@ exports.onBookingChanged = onValueWritten(
     // Студент підтвердив присутність
     if (after.studentConfirmed && !before.studentConfirmed) {
       console.log(`onBookingChanged: student confirmed uid=${uid}`);
-      await pushAdmin("✅ Підтвердив присутність", `${name} · ${date} о ${time}`);
+      await pushAdmin("✅ Підтвердив присутність", `${name} · ${date} о ${time}`, { url: adminLink() });
       return;
     }
 
@@ -189,7 +204,6 @@ exports.onBookingChanged = onValueWritten(
       const oldDate = before.date || "—";
       const oldTime = before.time || "—";
       const body = `Новий час: ${date} о ${time} (було ${oldDate} о ${oldTime})`;
-      const bookingId = event.params.bookingId;
       console.log(`onBookingChanged: rescheduled uid=${uid} bookingId=${bookingId} — queuing notif`);
       await db.ref(`rescheduleQueue/${uid}/${bookingId}`).set({
         uid, body, sendAfter: Date.now() + 60000,
