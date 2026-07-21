@@ -2479,12 +2479,12 @@ function BookingModal({ booking, onClose, onAction, settings, onViewStudent }) {
           <button onClick={() => onViewStudent?.(booking.userId, false)} style={{
             display:"flex", alignItems:"center", justifyContent:"center", gap:7,
             padding:"11px", borderRadius:14, border:"none", cursor:"pointer",
-            background:ink(0.05), color:TEXT_DIM, fontSize:13, fontWeight:800,
+            background:`${PURPLE}1f`, color:PURPLE, fontSize:13, fontWeight:800,
           }}>{IcoProfile} Профіль</button>
           <button onClick={() => onViewStudent?.(booking.userId, true)} style={{
             display:"flex", alignItems:"center", justifyContent:"center", gap:7,
             padding:"11px", borderRadius:14, border:"none", cursor:"pointer",
-            background:ink(0.05), color:TEXT_DIM, fontSize:13, fontWeight:800,
+            background:`${GOLD}1f`, color:GOLD, fontSize:13, fontWeight:800,
           }}>{IcoHistory} Історія</button>
         </div>
 

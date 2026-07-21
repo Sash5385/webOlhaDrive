@@ -450,7 +450,7 @@ const fmtDur = (m) => { const h=Math.floor(m/60),min=m%60; return h===0?`${min}�
 const colorOf = (id) => PALETTE.find(p=>p.id===id)?.color || GREEN;
 
 // ═══════════════════════════════════════════════════════════════
-// BROADCAST MODAL — ручна розсилка пушу активним учням
+// BROADCAST MODAL — ручна розсилка повідомлень активним учням
 // ═══════════════════════════════════════════════════════════════
 function BroadcastModal({ initialDate, initialSlot, onClose }) {
   const { BG_DEEP, SURFACE, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO, SI, GLOW, SHADE, INK } = useContext(ThemeContext);
@@ -3894,7 +3894,7 @@ function SettingsView({ settings, setSettings }) {
       {/* ── BROADCAST PUSH ── */}
       <Card style={{padding:"20px"}}>
         <SectionTitle>Сповіщення учням</SectionTitle>
-        <div style={{fontSize:12,color:DIM,marginBottom:14}}>Ручна розсилка пушу активним учням про вільний слот</div>
+        <div style={{fontSize:12,color:DIM,marginBottom:14}}>Ручна розсилка повідомлень активним учням про вільний слот</div>
         <button onClick={()=>setBroadcastOpen(true)} style={{width:"100%",background:`linear-gradient(135deg,${ACCENT},${ACC_HI})`,color:"#fff",border:"none",borderRadius:14,padding:"13px 0",fontSize:14,fontWeight:800,cursor:"pointer"}}>
           📣 Надіслати сповіщення учням
         </button>
@@ -3908,7 +3908,7 @@ function SettingsView({ settings, setSettings }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// TEMPLATES VIEW — редагування шаблонів пушів + лог
+// TEMPLATES VIEW — редагування шаблонів повідомлень + лог
 // ═══════════════════════════════════════════════════════════════
 function TemplatesView() {
   const { glow, ink } = useFX();
@@ -4057,15 +4057,15 @@ function TemplatesView() {
                 : `linear-gradient(165deg,${ACCENT_HI},${ACCENT})`,
               color:"#fff",
               boxShadow: testSent[meta.type] ? "none" : `inset 1px 1px 0 ${glow(0.25)},0 2px 8px ${ACCENT}44`,
-            }}>{testSent[meta.type] ? "✓ Пуш надіслано" : "📲 Надіслати тест-пуш"}</button>
+            }}>{testSent[meta.type] ? "✓ Повідомлення надіслано" : "📲 Надіслати тестове повідомлення"}</button>
           </Card>
         );
       })}
 
       <Card style={{padding:20}}>
-        <SectionTitle>Лог надісланих пушів</SectionTitle>
+        <SectionTitle>Лог надісланих повідомлень</SectionTitle>
         {log.length===0 ? (
-          <div style={{fontSize:13,color:TEXT_DIM,textAlign:"center",padding:"20px 0"}}>Поки пусто — пуші з'являться тут після відправки</div>
+          <div style={{fontSize:13,color:TEXT_DIM,textAlign:"center",padding:"20px 0"}}>Поки пусто — повідомлення з'являться тут після відправки</div>
         ) : log.map((item,i)=>(
           <div key={item.id} style={{
             display:"flex",gap:10,padding:"10px 0",alignItems:"flex-start",
