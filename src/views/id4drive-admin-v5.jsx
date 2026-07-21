@@ -452,7 +452,7 @@ const colorOf = (id) => PALETTE.find(p=>p.id===id)?.color || GREEN;
 // ═══════════════════════════════════════════════════════════════
 // SCHEDULE VIEW with drag/resize + pinch-to-zoom + day-count
 // ═══════════════════════════════════════════════════════════════
-function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef, openSlotsRef }) {
+function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef, openSlotsRef, onViewStudent }) {
   const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO, SI , GLOW, SHADE, INK, STRIPE_A, STRIPE_B } = useContext(ThemeContext);
   const glow=a=>`rgba(${GLOW},${a})`,shade=a=>`rgba(${SHADE},${a})`,ink=a=>`rgba(${INK},${a})`;
   const SURFACE_HI = SURF_HI, SURFACE_LO = SURF_LO, TEXT_DIM = DIM, TEXT_FAINT = FAINT, ACCENT_HI = ACC_HI, SHADOW_OUT = SO, SHADOW_IN = SI;
@@ -1795,7 +1795,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     </Card>
 
     <BookingModal booking={localSelectedBooking} onClose={()=>setLocalSelectedBooking(null)}
-      onAction={handleAction} settings={settings}/>
+      onAction={handleAction} settings={settings} onViewStudent={onViewStudent}/>
 
     {/* ── Модалка блокування ── */}
     {blockModal && (
@@ -2329,7 +2329,7 @@ function CreateSlotSheet({ data, settings, onClose }) {
 // ═══════════════════════════════════════════════════════════════
 // BOOKING DETAIL MODAL
 // ═══════════════════════════════════════════════════════════════
-function BookingModal({ booking, onClose, onAction, settings }) {
+function BookingModal({ booking, onClose, onAction, settings, onViewStudent }) {
   const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO, SI , GLOW, SHADE, INK } = useContext(ThemeContext);
   const glow=a=>`rgba(${GLOW},${a})`,shade=a=>`rgba(${SHADE},${a})`,ink=a=>`rgba(${INK},${a})`;
   const SURFACE_HI = SURF_HI, SURFACE_LO = SURF_LO, TEXT_DIM = DIM, TEXT_FAINT = FAINT, ACCENT_HI = ACC_HI, SHADOW_OUT = SO, SHADOW_IN = SI;
@@ -2379,6 +2379,8 @@ function BookingModal({ booking, onClose, onAction, settings }) {
 
   const IcoPhone = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 4.14 6.18 2 2 0 0 1 6.12 4h3a2 2 0 0 1 2 1.72c.13 1 .37 1.98.72 2.91a2 2 0 0 1-.45 2.11L10 12a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.93.35 1.91.59 2.91.72A2 2 0 0 1 22 16.92z"/></svg>;
   const IcoChat  = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+  const IcoProfile = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>;
+  const IcoHistory = <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>;
 
   return (
     <UIModal open={!!booking} onClose={onClose} sheet={false} size={340}>
@@ -2474,6 +2476,16 @@ function BookingModal({ booking, onClose, onAction, settings }) {
             boxShadow:SHADOW_OUT,
             color:BLUE, fontSize:13, fontWeight:800,
           }}>{IcoChat} Чат</button>
+          <button onClick={() => onViewStudent?.(booking.userId, false)} style={{
+            display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+            padding:"11px", borderRadius:14, border:"none", cursor:"pointer",
+            background:ink(0.05), color:TEXT_DIM, fontSize:13, fontWeight:800,
+          }}>{IcoProfile} Профіль</button>
+          <button onClick={() => onViewStudent?.(booking.userId, true)} style={{
+            display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+            padding:"11px", borderRadius:14, border:"none", cursor:"pointer",
+            background:ink(0.05), color:TEXT_DIM, fontSize:13, fontWeight:800,
+          }}>{IcoHistory} Історія</button>
         </div>
 
         {/* Cancel link */}
