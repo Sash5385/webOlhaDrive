@@ -95,7 +95,7 @@ function Progress({ hours, offset }) {
 // ─── NEW STUDENT FORM ────────────────────────────────────────────
 function NewStudentForm({ onSave, onCancel }) {
   const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO } = useContext(ThemeContext);
-  const [d, setD] = useState({ name:"", phone:"+380", discount:0, notes:"", type:"private", isVip:false, tsc:"" });
+  const [d, setD] = useState({ name:"", phone:"+380", discount:0, notes:"", type:"private", isVip:false });
   const inp = (k, label, opts={}) => (
     <div>
       <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>{label}</div>
@@ -128,22 +128,6 @@ function NewStudentForm({ onSave, onCancel }) {
           </div>
         </div>
       </div>
-      {/* ТСЦ — тільки для автошколи */}
-      {d.type==="school" && (
-        <div>
-          <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>ТСЦ</div>
-          <div style={{display:"flex",gap:6}}>
-            {[["ТСЦ 8041","8041"],["ТСЦ 8042","8042"]].map(([val,lbl])=>(
-              <button key={val} onClick={()=>setD(x=>({...x,tsc:val}))} style={{
-                flex:1,padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",
-                fontSize:11,fontWeight:700,
-                background:d.tsc===val?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-                color:d.tsc===val?"#fff":DIM,boxShadow:SO,
-              }}>{lbl}</button>
-            ))}
-          </div>
-        </div>
-      )}
       {/* VIP-мітка */}
       <div onClick={()=>setD(x=>({...x,isVip:!x.isVip}))} style={{
         display:"flex",alignItems:"center",justifyContent:"space-between",
@@ -652,17 +636,6 @@ export default function StudentsView({ studentJump, onStudentJumpHandled } = {})
   const updateStudent = (id, patch) => {
     setStudents(ss => ss.map(x => x.id===id ? {...x, ...patch} : x));
     update(ref(db, `users/${id}`), patch).catch(() => {});
-    if (patch.tsc !== undefined) {
-      get(ref(db, `bookings/${id}`)).then(snap => {
-        const bkgs = snap.val();
-        if (!bkgs) return;
-        const updates = {};
-        Object.keys(bkgs).forEach(bkId => {
-          updates[`bookings/${id}/${bkId}/tsc`] = patch.tsc;
-        });
-        update(ref(db), updates).catch(() => {});
-      }).catch(() => {});
-    }
   };
 
   const deleteStudent = id => {
@@ -680,7 +653,6 @@ export default function StudentsView({ studentJump, onStudentJumpHandled } = {})
       blocked:  false,
       isVip:    data.isVip||false,
       hours:    0,
-      tsc:      data.type==="school"?(data.tsc||""):"",
       createdAt: Date.now(),
     });
     setShowNew(false);
