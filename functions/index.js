@@ -1,5 +1,5 @@
 const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onValueUpdated, onValueWritten } = require("firebase-functions/v2/database");
+const { onValueCreated, onValueUpdated, onValueWritten } = require("firebase-functions/v2/database");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
@@ -210,6 +210,21 @@ exports.onBookingChanged = onValueWritten(
       }).catch(() => {});
       return;
     }
+  }
+);
+
+// Новий учень зареєструвався (заповнив анкету) — сповіщаємо адміна
+exports.onNewStudentRegistered = onValueCreated(
+  { ref: "users/{uid}/profile", region: "europe-west1" },
+  async (event) => {
+    const profile = event.data.val();
+    const { uid } = event.params;
+    const name  = profile?.name  || "Новий учень";
+    const phone = profile?.phone || "";
+    console.log(`onNewStudentRegistered: uid=${uid} name="${name}"`);
+    await pushAdmin("🎉 Новий учень", phone ? `${name} · ${phone}` : name, {
+      url: buildAdminLink("https://admin.olhadrive.kiev.ua", { uid }),
+    });
   }
 );
 
