@@ -22,12 +22,12 @@ async function pushStudent(uid, title, body, data = {}) {
   if (!token) return;
   const link = data.url || "https://olhadrive.kiev.ua/cabinet";
   try {
+    // Data-only push — title/body/url у data (клієнт читає payload.data),
+    // без notification, щоб браузер не показав дубль поверх showNotification().
     await admin.messaging().send({
       token,
-      notification: { title, body },
-      data: Object.fromEntries(Object.entries({ url: link, ...data }).map(([k,v]) => [k, String(v)])),
+      data: Object.fromEntries(Object.entries({ title, body, url: link, ...data }).map(([k,v]) => [k, String(v)])),
       webpush: {
-        notification: { icon: "/favicon.svg" },
         fcmOptions: { link },
       },
     });
@@ -72,12 +72,12 @@ async function pushAdmin(title, body, data = {}) {
   if (!token) { console.warn("pushAdmin: no token at admin/fcmToken"); return; }
   const link = data.url || "https://admin.olhadrive.kiev.ua";
   try {
+    // Data-only push — адмінка читає payload.data (App.jsx + SW), без
+    // notification, щоб не було дубля поверх showNotification().
     const result = await admin.messaging().send({
       token,
-      notification: { title, body },
-      data: Object.fromEntries(Object.entries({ url: link, ...data }).map(([k, v]) => [k, String(v)])),
+      data: Object.fromEntries(Object.entries({ title, body, url: link, ...data }).map(([k, v]) => [k, String(v)])),
       webpush: {
-        notification: { icon: "/favicon.svg" },
         fcmOptions: { link },
       },
     });
@@ -146,7 +146,15 @@ exports.onBookingChanged = onValueWritten(
       if (Object.keys(slotUpd).length) await db.ref("/").update(slotUpd).catch(() => {});
       await db.ref(`activeStudents/${uid}`).set(true).catch(() => {});
       await db.ref(`recentStudents/${uid}`).set(Date.now()).catch(() => {});
-      if (after.cancelledBy !== "admin") {
+      if (after.createdBy === "admin" && uid !== "admin") {
+        // Адмін вручну записав учня — сповіщаємо учня
+        console.log(`onBookingChanged: admin manual booking uid=${uid}`);
+        await pushStudent(uid, "📋 Урок заплановано", `${date} о ${time}`, {
+          url: "https://olhadrive.kiev.ua/cabinet/bookings",
+        });
+        await saveNotification(uid, "📋 Урок заплановано", `${date} о ${time}`, "booking_confirmed");
+      } else if (after.createdBy !== "admin") {
+        // Учень записався сам — сповіщаємо адміна
         console.log(`onBookingChanged: new booking uid=${uid}`);
         await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`, { url: adminLink() });
       }
@@ -364,14 +372,15 @@ exports.unlockVipSlots = onSchedule("every 1 hours", async () => {
   if (!tokens.length) return;
 
   for (let i = 0; i < tokens.length; i += 500) {
+    // Data-only push (title/body в data) — див. onPushTask/SW щодо дублів.
     await admin.messaging().sendEachForMulticast({
       tokens: tokens.slice(i, i + 500),
-      notification: {
+      data: {
         title: "🚗 З'явились нові слоти!",
         body: "Відкрились нові години для запису. Поспішай!",
+        url: "https://olhadrive.kiev.ua/cabinet",
       },
       webpush: {
-        notification: { icon: "/favicon.svg" },
         fcmOptions: { link: "https://olhadrive.kiev.ua/cabinet" },
       },
     }).catch(() => {});
@@ -502,6 +511,22 @@ exports.flushRescheduleQueue = onSchedule(
   }
 );
 
+// Студент надіслав повідомлення → пуш адміну
+exports.onStudentMessage = onValueCreated(
+  { ref: "chats/{uid}/{msgId}", region: "europe-west1" },
+  async (event) => {
+    const msg = event.data.val();
+    if (!msg || msg.from !== "student") return;
+
+    const { uid } = event.params;
+    const profileSnap = await db.ref(`users/${uid}/profile`).get();
+    const name = profileSnap.val()?.name || "Студент";
+
+    const text = msg.text || "";
+    await pushAdmin(`💬 ${name}`, text.length > 100 ? text.slice(0, 100) + "…" : text);
+  }
+);
+
 // Щогодини: нагадування за 24 год і за 2 год до уроку
 exports.sendLessonReminders = onSchedule(
   { schedule: "every 1 hours", region: "europe-west1" },
@@ -617,11 +642,13 @@ exports.onPushTask = onValueCreated(
     let sentCount = 0;
     for (let i = 0; i < tokened.length; i += 500) {
       const batch = tokened.slice(i, i + 500);
+      // Data-only push — title/body в data (клієнт читає payload.data),
+      // без top-level/webpush "notification", інакше браузер показав би
+      // сповіщення ще раз ДОДАТКОВО до showNotification() у SW (дубль).
       const res = await admin.messaging().sendEachForMulticast({
         tokens: batch.map(t => t.token),
-        notification: { title, body },
-        data: { url, date, time: slotsArr[0] || "" },
-        webpush: { notification: { icon: "/favicon.svg" }, fcmOptions: { link: url } },
+        data: { title, body, url, date, time: slotsArr[0] || "" },
+        webpush: { fcmOptions: { link: url } },
       }).catch(() => ({ successCount: 0 }));
       sentCount += res?.successCount || 0;
     }
