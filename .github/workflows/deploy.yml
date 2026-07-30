@@ -26,10 +26,18 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy to Firebase Hosting and Database Rules
+      - name: Delete legacy Cloud Functions (one-time cleanup)
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: |
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
-          npx firebase-tools deploy --only hosting:admin,database --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
+          npx firebase-tools functions:delete getGoogleReviews lessonReminder onAdminPush onBookingStatusChanged onInstructorMessage onNewBooking processPushTasks --region europe-west1 --project ${{ secrets.FIREBASE_PROJECT_ID }} --force
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
+
+      - name: Deploy to Firebase Hosting, Database Rules and Functions
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
+        run: |
+          printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
+          npx firebase-tools deploy --only hosting:admin,database,functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
