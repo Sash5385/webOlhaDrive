@@ -36,10 +36,18 @@ function AddToQueueModal({ onSave, onClose, svcs }) {
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:150,display:"flex",alignItems:"flex-end",backdropFilter:"blur(8px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{
+        position:"relative",
         width:"100%",maxWidth:520,margin:"0 auto",
         background:`linear-gradient(180deg,${SURFACE},${BG})`,
         borderRadius:"24px 24px 0 0",padding:"20px 18px 36px",
       }}>
+        <button onClick={onClose} style={{
+          position:"absolute",top:10,right:12,zIndex:5,
+          width:26,height:26,borderRadius:8,border:"none",cursor:"pointer",
+          background:"rgba(239,68,68,0.18)",color:"#ef4444",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:13,fontWeight:800,lineHeight:1,
+        }}>✕</button>
         <div style={{width:36,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 16px"}}/>
         <div style={{fontSize:16,fontWeight:800,color:TEXT,marginBottom:16}}>⏳ Додати до черги</div>
         {[
@@ -89,10 +97,18 @@ function QueueOfferModal({ cancelledBk, waiting, queueMode, onInvite, onClose, s
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.78)",zIndex:150,display:"flex",alignItems:"flex-end",backdropFilter:"blur(8px)"}}>
       <div onClick={e=>e.stopPropagation()} style={{
+        position:"relative",
         width:"100%",maxWidth:520,margin:"0 auto",
         background:`linear-gradient(180deg,${SURFACE},${BG})`,
         borderRadius:"24px 24px 0 0",padding:"20px 18px 36px",
       }}>
+        <button onClick={onClose} style={{
+          position:"absolute",top:10,right:12,zIndex:5,
+          width:26,height:26,borderRadius:8,border:"none",cursor:"pointer",
+          background:"rgba(239,68,68,0.18)",color:"#ef4444",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:13,fontWeight:800,lineHeight:1,
+        }}>✕</button>
         <div style={{width:36,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 14px"}}/>
         <div style={{fontSize:16,fontWeight:800,color:TEXT,marginBottom:4}}>⏳ Слот вільний!</div>
         <div style={{fontSize:12,color:DIM,marginBottom:16}}>
