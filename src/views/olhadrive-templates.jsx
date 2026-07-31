@@ -379,18 +379,18 @@ function TemplateCard({ tpl, onEdit, onSend, onToggle, onDelete, viewMode }) {
     return (
       <div className="fade-in" style={{
         display:"flex",alignItems:"center",gap:8,padding:"6px 10px",
-        background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,
+        background:`linear-gradient(155deg,color-mix(in srgb,${cat.color} 45%,${SURF_HI}) 0%,color-mix(in srgb,${cat.color} 16%,${SURFACE}) 100%)`,
+        border:`1px solid color-mix(in srgb,${cat.color} 40%,transparent)`,
         borderRadius:13,marginBottom:4,boxShadow:SO,
-        opacity:tpl.active?1:0.5,
-        borderLeft:`3px solid ${cat.color}`,
+        opacity:tpl.active?1:0.55,
       }}>
         <span style={{fontSize:17,flexShrink:0,lineHeight:1,width:22,textAlign:"center"}}>{cat.emoji}</span>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:12,fontWeight:700,color:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tpl.title}</div>
-          <div style={{fontSize:10,color:DIM,marginTop:1,display:"flex",alignItems:"center",gap:4}}>
-            <span style={{color:ch.color,fontWeight:600}}>{ch.emoji} {ch.label}</span>
-            <span style={{color:FAINT}}>·</span>
-            <span style={{color:tpl.trigger==="manual"?DIM:GOLD}}>{tpl.trigger==="manual"?"✋":"⚡"}</span>
+          <div style={{fontSize:12,fontWeight:700,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{tpl.title}</div>
+          <div style={{fontSize:10,color:"rgba(255,255,255,0.75)",marginTop:1,display:"flex",alignItems:"center",gap:4}}>
+            <span style={{fontWeight:600}}>{ch.emoji} {ch.label}</span>
+            <span>·</span>
+            <span>{tpl.trigger==="manual"?"✋":"⚡"}</span>
           </div>
         </div>
         <Toggle on={tpl.active} onChange={v=>onToggle(tpl.id,v)}/>
@@ -415,8 +415,13 @@ function TemplateCard({ tpl, onEdit, onSend, onToggle, onDelete, viewMode }) {
   // CARD MODE
   return (
     <div
-      className="pillow fade-in"
-      style={{marginBottom:10,opacity:tpl.active?1:0.6,overflow:"visible"}}
+      className="fade-in"
+      style={{
+        marginBottom:10,opacity:tpl.active?1:0.6,overflow:"visible",borderRadius:13,
+        background:`linear-gradient(155deg,color-mix(in srgb,${cat.color} 40%,${SURF_HI}) 0%,color-mix(in srgb,${cat.color} 14%,${SURFACE}) 100%)`,
+        border:`1px solid color-mix(in srgb,${cat.color} 36%,transparent)`,
+        boxShadow:SO,
+      }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
@@ -426,18 +431,18 @@ function TemplateCard({ tpl, onEdit, onSend, onToggle, onDelete, viewMode }) {
         style={{display:"flex",alignItems:"center",gap:10,padding:"12px 14px",cursor:"pointer"}}>
         <div style={{
           width:36,height:36,borderRadius:11,flexShrink:0,
-          background:`linear-gradient(155deg,${cat.color}99,${cat.color}33)`,
+          background:"rgba(0,0,0,0.25)",
           display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,
         }}>{cat.emoji}</div>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:800,color:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>{tpl.title}</div>
+          <div style={{fontSize:13,fontWeight:800,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:2}}>{tpl.title}</div>
           <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
-            <Pill label={`${ch.emoji} ${ch.label}`} color={ch.color} bg={`${ch.color}22`}/>
-            <Pill label={tpl.trigger==="manual"?"✋ Ручна":"⚡ Авто"} color={tpl.trigger==="manual"?DIM:GOLD} bg={tpl.trigger==="manual"?"rgba(255,255,255,0.05)":"rgba(247,201,72,0.12)"}/>
+            <Pill label={`${ch.emoji} ${ch.label}`} color="#fff" bg="rgba(0,0,0,0.25)"/>
+            <Pill label={tpl.trigger==="manual"?"✋ Ручна":"⚡ Авто"} color="#fff" bg="rgba(0,0,0,0.25)"/>
           </div>
         </div>
         <Toggle on={tpl.active} onChange={v=>{v||null; onToggle(tpl.id,v);}}/>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.2" strokeLinecap="round"
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2.2" strokeLinecap="round"
           style={{transform:expanded?"rotate(180deg)":"none",transition:"transform .22s",flexShrink:0}}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
@@ -453,8 +458,8 @@ function TemplateCard({ tpl, onEdit, onSend, onToggle, onDelete, viewMode }) {
                 style={{width:"100%",background:"transparent",border:"none",outline:"none",color:TEXT,fontSize:13,resize:"none",fontFamily:"inherit",lineHeight:1.5}}/>
             ) : (
               <div onClick={e=>{e.stopPropagation();setInlineEdit(true);}} style={{cursor:"text"}}>
-                <div style={{fontSize:13,color:DIM,lineHeight:1.5,marginBottom:4}}><BodyPreview body={tpl.body}/></div>
-                <div style={{fontSize:10,color:FAINT,fontStyle:"italic"}}>Клік — редагувати · Утримати — повна форма</div>
+                <div style={{fontSize:13,color:"rgba(255,255,255,0.85)",lineHeight:1.5,marginBottom:4}}><BodyPreview body={tpl.body}/></div>
+                <div style={{fontSize:10,color:"rgba(255,255,255,0.55)",fontStyle:"italic"}}>Клік — редагувати · Утримати — повна форма</div>
               </div>
             )}
           </div>

@@ -140,6 +140,13 @@ function QueueRow({ item, pos, onInvite, onBooked, onArchive, onDelete, dragHand
   const ini = (item.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
   const hrs = getHours(item, svc);
 
+  const STAGES = [
+    { id:"waiting", label:"Очікує",    color:PURPLE2 },
+    { id:"offered", label:"Запрошено", color:GOLD    },
+    { id:"booked",  label:"Записано",  color:GREEN   },
+  ];
+  const stageIdx = STAGES.findIndex(s => s.id === item.status);
+
   return (
     <div className={`drag-item fade-in ${isDragging?"dragging":""}`} style={{
       background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,
@@ -188,11 +195,29 @@ function QueueRow({ item, pos, onInvite, onBooked, onArchive, onDelete, dragHand
             fontSize:11,fontWeight:900,color:GOLD,whiteSpace:"nowrap",
           }}>{hrs} год</div>
         )}
-        {/* status chip */}
-        <span style={{background:st.bg,color:st.color,padding:"3px 8px",borderRadius:7,fontSize:10,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>
-          {st.label}
-        </span>
+        {/* status chip (archived only — не частина прогресу) */}
+        {item.status === "archived" && (
+          <span style={{background:st.bg,color:st.color,padding:"3px 8px",borderRadius:7,fontSize:10,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"}}>
+            {st.label}
+          </span>
+        )}
       </div>
+
+      {/* progress stages */}
+      {stageIdx >= 0 && (
+        <div style={{padding:"0 12px 10px"}}>
+          <div style={{display:"flex",alignItems:"center",gap:4}}>
+            {STAGES.map((s,i)=>(
+              <div key={s.id} style={{flex:1,height:4,borderRadius:2,background:stageIdx>=i?s.color:BORDER}}/>
+            ))}
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",marginTop:4}}>
+            {STAGES.map((s,i)=>(
+              <span key={s.id} style={{fontSize:8.5,fontWeight:stageIdx===i?800:600,color:stageIdx===i?s.color:FAINT}}>{s.label}</span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* actions row */}
       {item.status !== "archived" && (
@@ -330,9 +355,13 @@ export default function QueueView({ settings }) {
             {label:"Запрошено",val:offered,  c:GOLD},
             {label:"Записані", val:booked_c, c:GREEN},
           ].map(s=>(
-            <div key={s.label} style={{background:BG_DEEP,borderRadius:10,boxShadow:SI,padding:"10px 8px",textAlign:"center"}}>
-              <div style={{fontSize:18,fontWeight:900,color:s.c}}>{s.val}</div>
-              <div style={{fontSize:9,color:FAINT,marginTop:2,letterSpacing:0.5}}>{s.label.toUpperCase()}</div>
+            <div key={s.label} style={{
+              borderRadius:11, padding:"10px 6px", textAlign:"center",
+              background:`linear-gradient(155deg,color-mix(in srgb,${s.c} 22%,${BG_DEEP}),color-mix(in srgb,${s.c} 6%,${BG_DEEP}))`,
+              border:`1px solid color-mix(in srgb,${s.c} 32%,transparent)`,
+            }}>
+              <div style={{fontSize:18,fontWeight:900,color:"#fff"}}>{s.val}</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,0.6)",marginTop:2,letterSpacing:0.5}}>{s.label.toUpperCase()}</div>
             </div>
           ))}
         </div>
