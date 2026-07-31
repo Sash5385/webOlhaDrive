@@ -118,12 +118,20 @@ function ServiceFormModal({ svc, onSave, onClose }) {
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"flex-end",backdropFilter:"blur(8px)"}}>
       <div onClick={e=>e.stopPropagation()} className="modal-in" style={{
+        position:"relative",
         width:"100%",maxWidth:520,margin:"0 auto",
         background:`linear-gradient(165deg,color-mix(in srgb,${accentColor} 22%,${BG}) 0%,${BG} 70%)`,
         border:`1px solid color-mix(in srgb,${accentColor} 28%,transparent)`,
         borderRadius:"24px 24px 0 0",padding:"20px 18px 36px",
         maxHeight:"92vh",overflowY:"auto"
       }}>
+        <button onClick={onClose} style={{
+          position:"absolute",top:10,right:12,zIndex:5,
+          width:26,height:26,borderRadius:8,border:"none",cursor:"pointer",
+          background:"rgba(239,68,68,0.18)",color:"#ef4444",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:13,fontWeight:800,lineHeight:1,
+        }}>✕</button>
         <div style={{width:36,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 18px"}}/>
         <div style={{fontSize:17,fontWeight:800,marginBottom:20}}>{isNew?"Нова послуга":"Редагування послуги"}</div>
 
@@ -262,10 +270,18 @@ function DeleteConfirm({ svc, onConfirm, onArchive, onClose }) {
   return (
     <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:100,display:"flex",alignItems:"flex-end",backdropFilter:"blur(8px)"}}>
       <div onClick={e=>e.stopPropagation()} className="modal-in" style={{
+        position:"relative",
         width:"100%",maxWidth:520,margin:"0 auto",
         background:`linear-gradient(180deg,${SURFACE},${BG})`,
         borderRadius:"24px 24px 0 0",padding:"24px 18px 36px"
       }}>
+        <button onClick={onClose} style={{
+          position:"absolute",top:10,right:12,zIndex:5,
+          width:26,height:26,borderRadius:8,border:"none",cursor:"pointer",
+          background:"rgba(239,68,68,0.18)",color:"#ef4444",
+          display:"flex",alignItems:"center",justifyContent:"center",
+          fontSize:13,fontWeight:800,lineHeight:1,
+        }}>✕</button>
         <div style={{width:36,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 20px"}}/>
         <div style={{textAlign:"center",marginBottom:20}}>
           <div style={{fontSize:32,marginBottom:8}}>⚠️</div>
