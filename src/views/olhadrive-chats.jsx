@@ -4,20 +4,21 @@ import { db } from "../firebase";
 import { LangContext } from "../App";
 
 import { ThemeContext } from "../theme.js";
-
-// CSS is defined inside ChatsView to use theme variables
+import { UICss, useFX } from "../ui";
 
 const QUICK = ["Підтверджую урок ✅","Урок скасовано ❌","Нагадую: завтра","Будь ласка, підтвердіть","До зустрічі 👋"];
 const HUES = [160, 220, 30, 280, 340, 200, 40, 300, 100, 180];
 const hueForUid = (uid) => HUES[(uid || "").charCodeAt(0) % HUES.length];
 const nowTime = () => new Date().toLocaleTimeString("uk", {hour:"2-digit", minute:"2-digit"});
 
-// ─── HELPERS ────────────────────────────────────────────────────
+// ─── AVATAR ──────────────────────────────────────────────────────
 const Ava = ({ name, hue, size=36, online, isBroadcast }) => {
   const { GREEN, BG } = useContext(ThemeContext);
   if (isBroadcast) return (
-    <div style={{width:size,height:size,borderRadius:size/2,background:"linear-gradient(145deg,rgba(168,85,247,0.8),rgba(109,40,217,0.9))",
-      display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.45,flexShrink:0,boxShadow:"0 2px 10px rgba(168,85,247,0.5)"}}>📢</div>
+    <div style={{width:size,height:size,borderRadius:size/2,
+      background:"linear-gradient(145deg,rgba(168,85,247,0.8),rgba(109,40,217,0.9))",
+      display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*.45,flexShrink:0,
+      boxShadow:"0 2px 10px rgba(168,85,247,0.5)"}}>📢</div>
   );
   const ini = (name || "?").split(" ").map(w=>w[0]).slice(0,2).join("");
   return (
@@ -25,7 +26,8 @@ const Ava = ({ name, hue, size=36, online, isBroadcast }) => {
       <div style={{width:size,height:size,borderRadius:size/2,
         background:`linear-gradient(145deg,hsl(${hue},60%,44%),hsl(${(hue+35)%360},70%,28%))`,
         display:"flex",alignItems:"center",justifyContent:"center",
-        fontSize:size*.3,fontWeight:800,color:"#fff",boxShadow:`0 2px 8px hsla(${hue},50%,30%,.5)`}}>{ini}</div>
+        fontSize:size*.3,fontWeight:800,color:"#fff",
+        boxShadow:`0 2px 8px hsla(${hue},50%,30%,.5)`}}>{ini}</div>
       {online && <div style={{position:"absolute",bottom:1,right:1,width:9,height:9,borderRadius:5,background:GREEN,border:`2px solid ${BG}`}}/>}
     </div>
   );
@@ -34,6 +36,7 @@ const Ava = ({ name, hue, size=36, online, isBroadcast }) => {
 // ─── CONVERSATION ────────────────────────────────────────────────
 function Conversation({ contact, messages, onSend, isBroadcast }) {
   const { BORDER, BG_DEEP, SURF_LO, SURF_HI, SURFACE, FAINT, DIM, GOLD, SI, SO, ACC_HI, ACCENT, TEXT } = useContext(ThemeContext);
+  const { shade } = useFX();
   const [text, setText] = useState("");
   const [quick, setQuick] = useState(false);
   const bottomRef = useRef(null);
@@ -91,7 +94,8 @@ function Conversation({ contact, messages, onSend, isBroadcast }) {
           {QUICK.map((q,i)=>(
             <button key={i} onClick={()=>{setText(q);setQuick(false);taRef.current?.focus();}} style={{
               background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,border:"none",borderRadius:8,
-              padding:"5px 10px",cursor:"pointer",color:DIM,fontSize:11,fontWeight:600,whiteSpace:"nowrap",boxShadow:SO,
+              padding:"5px 10px",cursor:"pointer",color:DIM,fontSize:11,fontWeight:600,
+              whiteSpace:"nowrap",boxShadow:SO,fontFamily:"inherit",
             }}>{q}</button>
           ))}
         </div>
@@ -108,7 +112,7 @@ function Conversation({ contact, messages, onSend, isBroadcast }) {
             cursor:text.trim()?"pointer":"default",
             background:text.trim()?sendBg:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
             display:"flex",alignItems:"center",justifyContent:"center",
-            boxShadow:text.trim()?"0 3px 10px rgba(0,0,0,0.2)":SO,transition:"all .15s",
+            boxShadow:text.trim()?`0 3px 10px ${shade(0.2)}`:SO,transition:"all .15s",
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -122,30 +126,25 @@ function Conversation({ contact, messages, onSend, isBroadcast }) {
 
 // ─── MAIN ────────────────────────────────────────────────────────
 const BROADCAST_ID = "__broadcast__";
-
-const GENERAL_ID = "__general__";
+const GENERAL_ID   = "__general__";
 
 export default function ChatsView() {
-  const lang = useContext(LangContext);
   const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, SO, SI } = useContext(ThemeContext);
+  const { shade, glow, ink } = useFX();
 
   const css = `
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-thumb{background:${FAINT};border-radius:2px}
-
 .bubble-out{
   background:linear-gradient(135deg,#2a5298,#1a3a70);
   border-radius:16px 16px 3px 16px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.3);
+  box-shadow:0 2px 8px ${shade(0.3)};
 }
 .bubble-in{
   background:linear-gradient(135deg,${SURF_HI},${SURFACE});
   border-radius:16px 16px 16px 3px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.25);
+  box-shadow:0 2px 8px ${shade(0.2)};
 }
 .bubble-sys{
-  background:rgba(128,128,128,0.1);
+  background:${ink(0.07)};
   border-radius:10px;
   border:1px solid ${BORDER};
 }
@@ -154,69 +153,51 @@ export default function ChatsView() {
   border-radius:16px 16px 3px 16px;
   border:1px solid rgba(168,85,247,0.3);
 }
-
 .chat-row{cursor:pointer;transition:background .12s;user-select:none}
-.chat-row:active{background:rgba(128,128,128,0.05)}
+.chat-row:active{background:${ink(0.04)}}
 .chat-row.open{background:linear-gradient(135deg,rgba(91,155,255,0.1),rgba(91,155,255,0.04))}
 .chat-row.broadcast-open{background:linear-gradient(135deg,rgba(168,85,247,0.12),rgba(124,58,237,0.06))}
-
 .msg-input{background:transparent;border:none;outline:none;color:${TEXT};font-size:13px;resize:none;font-family:inherit;flex:1;padding:0;line-height:1.4;max-height:80px;overflow-y:auto}
-
 @keyframes drop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
 .drop{animation:drop .18s ease both}
-
 @keyframes msg-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .msg-in{animation:msg-in .15s ease both}
-
 @keyframes del-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .del-confirm{animation:del-shake .25s ease}
 `;
+
   const [contacts,      setContacts]      = useState([]);
-  const [messages,      setMessages]      = useState({}); // { [uid]: [{...}] }
+  const [messages,      setMessages]      = useState({});
   const [generalMsgs,   setGeneralMsgs]   = useState([]);
   const [broadcastMsgs, setBroadcastMsgs] = useState([]);
   const [openId,        setOpenId]        = useState(null);
-  const [search,        setSearch]        = useState("");
-  const [deletingId,    setDeletingId]    = useState(null);
-  const [loading,       setLoading]       = useState(true);
+  const [search,      setSearch]      = useState("");
+  const [deletingId,  setDeletingId]  = useState(null);
+  const [loading,     setLoading]     = useState(true);
   const msgUnsubs = useRef({});
 
-  // ── Load students from /users ──────────────────────────────────
+  // ── Load students ─────────────────────────────────────────────
   useEffect(() => {
     const unsub = onValue(ref(db, "users"), snap => {
       const data = snap.val() || {};
-      const list = Object.entries(data).map(([uid, u]) => {
-        const p = u.profile || {};
-        return {
-          id: uid,
-          name: p.name || "Учень",
-          phone: p.phone || "",
-          hue: hueForUid(uid),
-          online: false,
-          unread: 0,
-          lastMsg: "",
-          lastTime: "",
-        };
-      });
+      const list = Object.entries(data)
+        .map(([uid, u]) => {
+          const p = u.profile || {};
+          return { id:uid, name:p.name||"", phone:p.phone||"", hue:hueForUid(uid), online:false, unread:0, lastMsg:"", lastTime:"" };
+        })
+        .filter(c => c.name || c.phone);
       setContacts(list);
       setLoading(false);
     });
     return unsub;
   }, []);
 
-  // ── Subscribe to messages for each contact ──────────────────────
+  // ── Subscribe messages ────────────────────────────────────────
   useEffect(() => {
     const currentIds = new Set(contacts.map(c => c.id));
-
-    // Unsubscribe stale
     Object.keys(msgUnsubs.current).forEach(uid => {
-      if (!currentIds.has(uid)) {
-        msgUnsubs.current[uid]?.();
-        delete msgUnsubs.current[uid];
-      }
+      if (!currentIds.has(uid)) { msgUnsubs.current[uid]?.(); delete msgUnsubs.current[uid]; }
     });
-
-    // Subscribe new
     contacts.forEach(c => {
       if (msgUnsubs.current[c.id]) return;
       const r = ref(db, `chats/${c.id}`);
@@ -224,27 +205,21 @@ export default function ChatsView() {
         const msgs = Object.entries(snap.val()||{}).map(([id,m])=>({...m,id})).sort((a,b)=>(a.ts||0)-(b.ts||0)||(a.id>b.id?1:-1));
         setMessages(prev => ({...prev, [c.id]: msgs}));
         if (msgs.length > 0) {
-          const last = msgs[msgs.length - 1];
-          setContacts(cs => cs.map(ct => ct.id === c.id
-            ? {...ct, lastMsg: last.text, lastTime: last.time,
-               unread: openId === c.id ? 0 : (ct.unread || 0) + (last.from !== 'admin' ? 1 : 0)}
-            : ct
-          ));
+          const last = msgs[msgs.length-1];
+          setContacts(cs => cs.map(ct => ct.id===c.id
+            ? {...ct, lastMsg:last.text, lastTime:last.time, unread:openId===c.id?0:(ct.unread||0)+(last.from!=='admin'?1:0)}
+            : ct));
         }
       });
       msgUnsubs.current[c.id] = unsub;
     });
-
     return () => {};
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contacts.length]);
 
-  // ── Cleanup on unmount ─────────────────────────────────────────
-  useEffect(() => {
-    return () => Object.values(msgUnsubs.current).forEach(u => u?.());
-  }, []);
+  useEffect(() => () => Object.values(msgUnsubs.current).forEach(u=>u?.()), []);
 
-  // ── Subscribe to general chat ──────────────────────────────────
+  // ── General chat ──────────────────────────────────────────────
   useEffect(() => {
     const unsub = onValue(ref(db, "chats/general"), snap => {
       const msgs = Object.entries(snap.val()||{}).map(([id,m])=>({...m,id})).sort((a,b)=>(a.ts||0)-(b.ts||0)||(a.id>b.id?1:-1));
@@ -262,26 +237,18 @@ export default function ChatsView() {
     return unsub;
   }, []);
 
-  // ── Free slot broadcast listener ──────────────────────────────
+  // ── Broadcast free-slot ───────────────────────────────────────
   const applyFreeSlotBroadcast = useCallback((msg, time) => {
     contacts.forEach(c => {
-      push(ref(db, `chats/${c.id}`), {from:"admin", text:msg, time, ts:Date.now(), broadcast:true}).catch(()=>{});
+      push(ref(db, `chats/${c.id}`), {from:"admin",text:msg,time,ts:Date.now(),broadcast:true}).catch(()=>{});
     });
     localStorage.removeItem("olhadrive-free-slot");
   }, [contacts]);
 
   useEffect(() => {
     const pending = localStorage.getItem("olhadrive-free-slot");
-    if (pending) {
-      try {
-        const {msg, time} = JSON.parse(pending);
-        if (msg) applyFreeSlotBroadcast(msg, time);
-      } catch(_) {}
-    }
-    const handler = e => {
-      const {msg, time} = e.detail || {};
-      if (msg) applyFreeSlotBroadcast(msg, time);
-    };
+    if (pending) { try { const {msg,time}=JSON.parse(pending); if(msg) applyFreeSlotBroadcast(msg,time); } catch(_){} }
+    const handler = e => { const {msg,time}=e.detail||{}; if(msg) applyFreeSlotBroadcast(msg,time); };
     window.addEventListener("olhadrive-free-slot", handler);
     return () => window.removeEventListener("olhadrive-free-slot", handler);
   }, [applyFreeSlotBroadcast]);
@@ -291,38 +258,35 @@ export default function ChatsView() {
     if (deletingId) { setDeletingId(null); return; }
     setOpenId(prev => prev===id ? null : id);
     if (id !== BROADCAST_ID && id !== GENERAL_ID) {
-      setContacts(cs => cs.map(c => c.id===id ? {...c, unread:0} : c));
-      // Reset admin unread counter in DB
+      setContacts(cs => cs.map(c => c.id===id ? {...c,unread:0} : c));
       set(ref(db, `chatMeta/${id}/unreadForAdmin`), 0).catch(()=>{});
     }
   };
 
   const handleSend = (contactId, text) => {
-    const time = nowTime();
-    const ts = Date.now();
-    const msg = {from:"admin", text, time, ts};
+    const time = nowTime(); const ts = Date.now();
+    const msg = {from:"admin",text,time,ts};
     if (contactId === BROADCAST_ID) {
       push(ref(db,"chats/__broadcast__"),{...msg,broadcast:true}).catch(()=>{});
       contacts.forEach(c => {
-        push(ref(db, `chats/${c.id}`), {...msg, broadcast:true}).catch(()=>{});
-        update(ref(db, `chatMeta/${c.id}`), { unreadForStudent: increment(1), lastMsg: text, lastTs: ts }).catch(()=>{});
+        push(ref(db,`chats/${c.id}`),{...msg,broadcast:true}).catch(()=>{});
+        update(ref(db,`chatMeta/${c.id}`),{unreadForStudent:increment(1),lastMsg:text,lastTs:ts}).catch(()=>{});
       });
     } else if (contactId === GENERAL_ID) {
-      push(ref(db, "chats/general"), {from:"admin", uid:"__admin__", name:"Інструктор", text, time, ts}).catch(()=>{});
+      push(ref(db,"chats/general"),{from:"admin",uid:"__admin__",name:"Інструктор",text,time,ts}).catch(()=>{});
     } else {
-      push(ref(db, `chats/${contactId}`), msg).catch(()=>{});
-      update(ref(db, `chatMeta/${contactId}`), { unreadForStudent: increment(1), lastMsg: text, lastTs: ts }).catch(()=>{});
+      push(ref(db,`chats/${contactId}`),msg).catch(()=>{});
+      update(ref(db,`chatMeta/${contactId}`),{unreadForStudent:increment(1),lastMsg:text,lastTs:ts}).catch(()=>{});
     }
   };
 
   const handleDelete = (e, id) => {
     e.stopPropagation();
     if (deletingId === id) {
-      setContacts(cs => cs.filter(c => c.id !== id));
-      if (openId === id) setOpenId(null);
+      setContacts(cs => cs.filter(c=>c.id!==id));
+      if (openId===id) setOpenId(null);
       setDeletingId(null);
-      msgUnsubs.current[id]?.();
-      delete msgUnsubs.current[id];
+      msgUnsubs.current[id]?.(); delete msgUnsubs.current[id];
       setMessages(prev => { const n={...prev}; delete n[id]; return n; });
       remove(ref(db, `chats/${id}`)).catch(()=>{});
       remove(ref(db, `chatMeta/${id}`)).catch(()=>{});
@@ -332,42 +296,41 @@ export default function ChatsView() {
     }
   };
 
-  const filtered = contacts.filter(c =>
-    (c.name||"").toLowerCase().includes(search.toLowerCase()) ||
-    (c.phone||"").includes(search)
-  );
-  const totalUnread = contacts.reduce((s,c)=>s+c.unread, 0);
+  const filtered      = contacts.filter(c => (c.name||"").toLowerCase().includes(search.toLowerCase()) || (c.phone||"").includes(search));
+  const totalUnread   = contacts.reduce((s,c)=>s+c.unread, 0);
   const broadcastOpen = openId === BROADCAST_ID;
-  const generalOpen = openId === GENERAL_ID;
+  const generalOpen   = openId === GENERAL_ID;
 
   return (
     <>
+      <UICss/>
       <style>{css}</style>
       <div style={{fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
         {/* ── SEARCH ── */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:9}}>
           <div style={{flex:1,background:BG_DEEP,borderRadius:11,boxShadow:SI,padding:"4px 11px",display:"flex",alignItems:"center",gap:7}}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={FAINT} strokeWidth="2.2" strokeLinecap="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Пошук учня…"
-              style={{flex:1,background:"transparent",border:"none",outline:"none",color:TEXT,padding:"8px 0",fontSize:13}}/>
+              style={{flex:1,background:"transparent",border:"none",outline:"none",color:TEXT,padding:"8px 0",fontSize:13,fontFamily:"inherit"}}/>
             {search && <button onClick={()=>setSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:FAINT,fontSize:16,padding:0,lineHeight:1}}>×</button>}
           </div>
-          {totalUnread>0 && (
+          {totalUnread > 0 && (
             <div style={{background:ACCENT,color:"#fff",borderRadius:10,padding:"3px 9px",fontSize:11,fontWeight:800,flexShrink:0,boxShadow:`0 0 8px ${ACCENT}66`}}>
               {totalUnread}
             </div>
           )}
         </div>
 
-        {/* ── BROADCAST CHANNEL ── */}
+        {/* ── BROADCAST ── */}
         {!search && (
           <div style={{
             background:`linear-gradient(155deg,color-mix(in srgb,#a855f7 42%,${BG_DEEP}) 0%,color-mix(in srgb,#a855f7 14%,${BG_DEEP}) 100%)`,
             borderRadius:13,overflow:"hidden",marginBottom:6,boxShadow:SO,
             border:`1px solid color-mix(in srgb,#a855f7 ${broadcastOpen?55:38}%,transparent)`}}>
-            <div className={`chat-row${broadcastOpen?" broadcast-open":""}`}
-              onClick={()=>toggle(BROADCAST_ID)}
+            <div className={`chat-row${broadcastOpen?" broadcast-open":""}`} onClick={()=>toggle(BROADCAST_ID)}
               style={{display:"flex",alignItems:"center",gap:9,padding:"9px 12px"}}>
               <Ava name="Загальний" hue={270} size={36} isBroadcast/>
               <div style={{flex:1,minWidth:0}}>
@@ -387,20 +350,19 @@ export default function ChatsView() {
             </div>
             {broadcastOpen && (
               <Conversation key={BROADCAST_ID}
-                contact={{id:BROADCAST_ID, name:"Загальний", messages:broadcastMsgs}}
+                contact={{id:BROADCAST_ID,name:"Загальний",messages:broadcastMsgs}}
                 messages={broadcastMsgs} onSend={handleSend} isBroadcast/>
             )}
           </div>
         )}
 
-        {/* ── GENERAL CHAT CHANNEL ── */}
+        {/* ── GENERAL CHAT ── */}
         {!search && (
           <div style={{
             background:`linear-gradient(155deg,color-mix(in srgb,#5b9bff 42%,${BG_DEEP}) 0%,color-mix(in srgb,#5b9bff 14%,${BG_DEEP}) 100%)`,
             borderRadius:13,overflow:"hidden",marginBottom:6,boxShadow:SO,
             border:`1px solid color-mix(in srgb,#5b9bff ${generalOpen?55:38}%,transparent)`}}>
-            <div className={`chat-row${generalOpen?" open":""}`}
-              onClick={()=>toggle(GENERAL_ID)}
+            <div className={`chat-row${generalOpen?" open":""}`} onClick={()=>toggle(GENERAL_ID)}
               style={{display:"flex",alignItems:"center",gap:9,padding:"9px 12px"}}>
               <div style={{width:36,height:36,borderRadius:18,background:"rgba(0,0,0,0.2)",
                 display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>👥</div>
@@ -423,12 +385,8 @@ export default function ChatsView() {
             </div>
             {generalOpen && (
               <Conversation key={GENERAL_ID}
-                contact={{id:GENERAL_ID, name:"Загальний чат"}}
-                messages={generalMsgs.map(m => ({
-                  ...m,
-                  from: m.uid === "__admin__" ? "admin" : "student",
-                  text: m.uid === "__admin__" ? m.text : `${m.name}: ${m.text}`,
-                }))}
+                contact={{id:GENERAL_ID,name:"Загальний чат"}}
+                messages={generalMsgs.map(m=>({...m,from:m.uid==="__admin__"?"admin":"student",text:m.uid==="__admin__"?m.text:`${m.name}: ${m.text}`}))}
                 onSend={handleSend}/>
             )}
           </div>
@@ -443,13 +401,13 @@ export default function ChatsView() {
           </div>
         )}
 
-        {/* ── PERSONAL CHATS LIST ── */}
+        {/* ── PERSONAL CHATS ── */}
         <div style={{display:"flex",flexDirection:"column",gap:6}}>
           {filtered.map(c => {
-            const isOpen = openId === c.id;
+            const isOpen     = openId === c.id;
             const isDeleting = deletingId === c.id;
-            const cMsgs = messages[c.id] || [];
-            const hueColor = `hsl(${c.hue},60%,50%)`;
+            const cMsgs      = messages[c.id] || [];
+            const hueColor   = `hsl(${c.hue},60%,50%)`;
             return (
               <div key={c.id} style={{
                 background:`linear-gradient(155deg,color-mix(in srgb,${hueColor} 42%,${BG_DEEP}) 0%,color-mix(in srgb,${hueColor} 14%,${BG_DEEP}) 100%)`,
@@ -457,13 +415,12 @@ export default function ChatsView() {
                 border:`1px solid ${isDeleting?"rgba(239,68,68,0.5)":isOpen?"rgba(255,255,255,0.35)":`color-mix(in srgb,${hueColor} 38%,transparent)`}`,
                 transition:"border-color .2s",
               }}>
-                <div className={`chat-row${isOpen?" open":""}`}
-                  onClick={()=>toggle(c.id)}
+                <div className={`chat-row${isOpen?" open":""}`} onClick={()=>toggle(c.id)}
                   style={{display:"flex",alignItems:"center",gap:9,padding:"9px 12px"}}>
                   <Ava name={c.name} hue={c.hue} size={36} online={c.online}/>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                      <span style={{fontSize:13,fontWeight:800,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</span>
+                      <span style={{fontSize:13,fontWeight:800,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name || c.phone}</span>
                     </div>
                     <div style={{fontSize:11,color:"rgba(255,255,255,0.78)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                       {c.lastMsg || c.phone || "Немає повідомлень"}
@@ -471,13 +428,11 @@ export default function ChatsView() {
                   </div>
                   <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:4,flexShrink:0}}>
                     <span style={{fontSize:10,color:"rgba(255,255,255,0.65)"}}>{c.lastTime}</span>
-                    {c.unread>0
+                    {c.unread > 0
                       ? <span style={{background:ACCENT,color:"#fff",borderRadius:9,padding:"1px 6px",fontSize:10,fontWeight:800}}>{c.unread}</span>
                       : <span style={{width:8,height:8,borderRadius:4,background:"rgba(255,255,255,0.25)",display:"inline-block"}}/>
                     }
                   </div>
-
-                  {/* delete */}
                   <button onClick={e=>handleDelete(e,c.id)}
                     className={isDeleting?"del-confirm":""}
                     style={{flexShrink:0,background:"none",border:"none",cursor:"pointer",
@@ -492,7 +447,6 @@ export default function ChatsView() {
                       </svg>
                     )}
                   </button>
-
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="2.2" strokeLinecap="round"
                     style={{flexShrink:0,transform:isOpen?"rotate(180deg)":"none",transition:"transform .22s"}}>
                     <polyline points="6 9 12 15 18 9"/>
