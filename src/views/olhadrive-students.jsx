@@ -1,16 +1,15 @@
 import { useState, useEffect, useContext } from "react";
 import { createPortal } from "react-dom";
-import { ref, onValue, off, update, push, remove, get } from "firebase/database";
+import { ref, onValue, update, push, remove, get } from "firebase/database";
 import { db } from "../firebase";
 
 import { ThemeContext } from "../theme.js";
-import { useFX, useBackClose } from "../ui";
+import { UICss, Field, Btn as UIBtn, useFX, useBackClose } from "../ui";
 
 const M = ["","Січ","Лют","Бер","Кві","Тра","Чер","Лип","Сер","Вер","Жов","Лис","Гру"];
 const fmtS = d => { if(!d) return "—"; const [,m,day]=d.split("-"); return `${parseInt(day)} ${M[parseInt(m)]}`; };
 const navTo = tab => window.dispatchEvent(new CustomEvent("olhadrive-nav", {detail:tab}));
 
-// SVG helper
 const Svg = (d, s=18, c="white", w=2) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">{d}</svg>
 );
@@ -23,27 +22,23 @@ const ICONS = {
   edit:     Svg(<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4z"/></>),
   ban:      Svg(<><circle cx="12" cy="12" r="9"/><line x1="6" y1="6" x2="18" y2="18"/></>, 18, "white", 2.2),
   unban:    Svg(<><polyline points="20 6 9 17 4 12"/></>, 18, "white", 2.5),
-  chev:     Svg(<><polyline points="6 9 12 15 18 9"/></>, 16, "#5a5c62"),
   search:   Svg(<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>, 15, "#5a5c62"),
-  filter:   Svg(<><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></>, 16),
   trash:    Svg(<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></>, 18, "white", 2),
   bell:     Svg(<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>),
   history:  Svg(<><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></>),
 };
 
-
 // ─── ACTION BUTTON ───────────────────────────────────────────────
-function Btn({ icon, label, onClick, color, danger }) {
+function ActBtn({ icon, label, onClick, color, danger }) {
   const { SURFACE, SURF_HI, BG_DEEP, DIM, SO } = useContext(ThemeContext);
   const tint = danger ? "#ef4444" : color;
   const bg = tint
     ? `linear-gradient(155deg,color-mix(in srgb,${tint} 45%,${BG_DEEP}) 0%,${BG_DEEP} 100%)`
     : `linear-gradient(145deg,${SURF_HI},${SURFACE})`;
-  const lc = tint ? "#fff" : DIM;
   return (
-    <button className="btn" onClick={onClick} style={{background:bg, boxShadow:SO}}>
+    <button className="act-btn" onClick={onClick} style={{background:bg,boxShadow:SO}}>
       {icon}
-      <span style={{color:lc}}>{label}</span>
+      <span style={{color:tint?"#fff":DIM}}>{label}</span>
     </button>
   );
 }
@@ -51,6 +46,7 @@ function Btn({ icon, label, onClick, color, danger }) {
 // ─── PROGRESS BAR ────────────────────────────────────────────────
 function Progress({ hours, offset }) {
   const { BG_DEEP, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, SI } = useContext(ThemeContext);
+  const { glow } = useFX();
   const total = hours + (offset || 0);
   const pct = Math.min((total / 40) * 100, 100);
   const done = pct >= 100;
@@ -61,75 +57,48 @@ function Progress({ hours, offset }) {
         <span style={{fontSize:11,fontWeight:800,color:done?ACCENT:GREEN}}>{total}/40 год · {Math.round(pct)}%</span>
       </div>
       <div style={{height:5,background:BG_DEEP,borderRadius:3,boxShadow:SI,overflow:"hidden"}}>
-        {offset > 0 && (
-          <div style={{
-            position:"relative",height:"100%",width:`${pct}%`,borderRadius:3,
+        {offset > 0 ? (
+          <div style={{position:"relative",height:"100%",width:`${pct}%`,borderRadius:3,
             background:done?`linear-gradient(90deg,${ACC_HI},${ACCENT})`:`linear-gradient(90deg,${BLUE},${GREEN})`,
-            boxShadow:`0 0 6px ${done?ACCENT:GREEN}44`,
-            overflow:"hidden",
-          }}>
-            <div style={{
-              position:"absolute",left:0,top:0,bottom:0,
-              width:`${Math.min((offset/total)*100,100)}%`,
-              background:"rgba(255,255,255,0.18)",
-            }}/>
+            boxShadow:`0 0 6px ${done?ACCENT:GREEN}44`,overflow:"hidden"}}>
+            <div style={{position:"absolute",left:0,top:0,bottom:0,
+              width:`${Math.min((offset/total)*100,100)}%`,background:glow(0.18)}}/>
           </div>
-        )}
-        {!offset && (
-          <div style={{
-            height:"100%",width:`${pct}%`,borderRadius:3,
+        ) : (
+          <div style={{height:"100%",width:`${pct}%`,borderRadius:3,
             background:done?`linear-gradient(90deg,${ACC_HI},${ACCENT})`:`linear-gradient(90deg,${BLUE},${GREEN})`,
-            boxShadow:`0 0 6px ${done?ACCENT:GREEN}44`,
-          }}/>
+            boxShadow:`0 0 6px ${done?ACCENT:GREEN}44`}}/>
         )}
       </div>
-      {offset > 0 && (
-        <div style={{fontSize:9,color:FAINT,marginTop:3}}>
-          з них {offset} год додано · {hours} год тут
-        </div>
-      )}
+      {offset > 0 && <div style={{fontSize:9,color:FAINT,marginTop:3}}>з них {offset} год додано · {hours} год тут</div>}
     </div>
   );
 }
 
-// ─── NEW STUDENT FORM ────────────────────────────────────────────
-function NewStudentForm({ onSave, onCancel }) {
-  const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO } = useContext(ThemeContext);
-  const [d, setD] = useState({ name:"", phone:"+380", discount:0, notes:"", type:"private", isVip:false });
-  const inp = (k, label, opts={}) => (
-    <div>
-      <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>{label}</div>
-      <input type={opts.type||"text"} value={d[k]??""} onChange={e=>setD(x=>({...x,[k]:e.target.value}))}
-        style={{background:BG_DEEP,border:`1.5px solid ${BORDER}`,borderRadius:8,color:TEXT,fontSize:13,padding:"7px 10px",outline:"none",width:"100%",fontFamily:"inherit"}}/>
-    </div>
-  );
+// ─── STUDENT FORM (shared: new + edit) ───────────────────────────
+function StudentForm({ initial, onSave, onCancel, saveLabel="Зберегти" }) {
+  const { BG_DEEP, TEXT, DIM, FAINT, BORDER, SO } = useContext(ThemeContext);
+  const [d, setD] = useState(initial);
+  const upd = (k,v) => setD(x=>({...x,[k]:v}));
+  const valid = (d.name||"").trim();
   return (
-    <div style={{
-      background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,
-      borderRadius:13, border:`1px solid ${BORDER}`, boxShadow:SO,
-      padding:"14px 14px 16px", display:"flex", flexDirection:"column", gap:9,
-    }}>
-      <div style={{fontSize:13,fontWeight:800,color:TEXT,marginBottom:2}}>Новий учень</div>
+    <div style={{display:"flex",flexDirection:"column",gap:9}}>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-        {inp("name","Ім'я")}
-        {inp("phone","Телефон")}
-        {inp("discount","Знижка %",{type:"number"})}
+        <Field label="Ім'я"      value={d.name||""}     onChange={v=>upd("name",v)}     placeholder="Ім'я Прізвище" style={{marginBottom:0}}/>
+        <Field label="Телефон"   value={d.phone||""}    onChange={v=>upd("phone",v)}    placeholder="+380..." style={{marginBottom:0}}/>
+        <Field label="Знижка %"  value={d.discount||""} onChange={v=>upd("discount",v)} placeholder="0" type="number" style={{marginBottom:0}}/>
         <div>
-          <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Тип</div>
+          <div style={{fontSize:10,color:FAINT,letterSpacing:1,marginBottom:5}}>ТИП</div>
           <div style={{display:"flex",gap:6}}>
             {[["private","Приват."],["school","Автошк."]].map(([k,l])=>(
-              <button key={k} onClick={()=>setD(x=>({...x,type:k}))} style={{
-                flex:1,padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",
-                fontSize:11,fontWeight:700,
-                background:d.type===k?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-                color:d.type===k?"#fff":DIM,boxShadow:SO,
-              }}>{l}</button>
+              <UIBtn key={k} variant={d.type===k?"primary":"ghost"} flex={1}
+                style={{padding:"7px 4px",borderRadius:8,fontSize:11}}
+                onClick={()=>upd("type",k)}>{l}</UIBtn>
             ))}
           </div>
         </div>
       </div>
-      {/* VIP-мітка */}
-      <div onClick={()=>setD(x=>({...x,isVip:!x.isVip}))} style={{
+      <div onClick={()=>upd("isVip",!d.isVip)} style={{
         display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"10px 12px",borderRadius:10,cursor:"pointer",
         background:d.isVip?"rgba(168,85,247,0.12)":BG_DEEP,
@@ -143,8 +112,7 @@ function NewStudentForm({ onSave, onCancel }) {
           <div style={{position:"absolute",top:2,left:d.isVip?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
         </div>
       </div>
-      {/* Без ліміту інтервалу між записами */}
-      <div onClick={()=>setD(x=>({...x,noIntervalLimit:!x.noIntervalLimit}))} style={{
+      <div onClick={()=>upd("noIntervalLimit",!d.noIntervalLimit)} style={{
         display:"flex",alignItems:"center",justifyContent:"space-between",
         padding:"10px 12px",borderRadius:10,cursor:"pointer",
         background:d.noIntervalLimit?"rgba(234,179,8,0.10)":BG_DEEP,
@@ -158,68 +126,16 @@ function NewStudentForm({ onSave, onCancel }) {
           <div style={{position:"absolute",top:2,left:d.noIntervalLimit?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
         </div>
       </div>
-      <div>
-        <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Нотатки</div>
-        <textarea value={d.notes} onChange={e=>setD(x=>({...x,notes:e.target.value}))} rows={2}
-          style={{background:BG_DEEP,border:`1.5px solid ${BORDER}`,borderRadius:8,color:TEXT,fontSize:13,padding:"7px 10px",outline:"none",width:"100%",fontFamily:"inherit",resize:"none"}}/>
-      </div>
+      <Field label="Нотатки" value={d.notes||""} onChange={v=>upd("notes",v)} placeholder="Нотатки…" textarea rows={2} style={{marginBottom:0}}/>
       <div style={{display:"flex",gap:7}}>
-        <button onClick={()=>onSave(d)} disabled={!d.name.trim()} style={{
-          flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",
-          background:d.name.trim()?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:"rgba(255,255,255,0.05)",
-          color:d.name.trim()?"#fff":FAINT,fontSize:13,fontWeight:700,boxShadow:SO,
-        }}>Додати</button>
-        <button onClick={onCancel} style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO}}>Скасувати</button>
+        <UIBtn variant="primary" flex={1} disabled={!valid} onClick={()=>valid&&onSave(d)}>{saveLabel}</UIBtn>
+        <UIBtn variant="ghost"   flex={1} onClick={onCancel}>Скасувати</UIBtn>
       </div>
     </div>
   );
 }
 
-// ─── EDIT FORM ───────────────────────────────────────────────────
-function EditForm({ s, onSave, onCancel }) {
-  const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, SO } = useContext(ThemeContext);
-  const [d, setD] = useState({ name:s.name, phone:s.phone, discount:s.discount??0, notes:s.notes||"", type:s.type });
-  const inp = (k, label, opts={}) => (
-    <div>
-      <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>{label}</div>
-      <input type={opts.type||"text"} value={d[k]??""} onChange={e=>setD(x=>({...x,[k]:e.target.value}))}
-        style={{background:BG_DEEP,border:`1.5px solid ${BORDER}`,borderRadius:8,color:TEXT,fontSize:13,padding:"7px 10px",outline:"none",width:"100%",fontFamily:"inherit"}}/>
-    </div>
-  );
-  return (
-    <div style={{display:"flex",flexDirection:"column",gap:9}}>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-        {inp("name","Ім'я")}
-        {inp("phone","Телефон")}
-        {inp("discount","Знижка %",{type:"number"})}
-        <div>
-          <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Тип</div>
-          <div style={{display:"flex",gap:6}}>
-            {[["private","Приват."],["school","Автошк."]].map(([k,l])=>(
-              <button key={k} onClick={()=>setD(x=>({...x,type:k}))} style={{
-                flex:1,padding:"7px 4px",borderRadius:8,border:"none",cursor:"pointer",
-                fontSize:11,fontWeight:700,
-                background:d.type===k?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-                color:d.type===k?"#fff":DIM,boxShadow:SO,
-              }}>{l}</button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div>
-        <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",marginBottom:4}}>Нотатки</div>
-        <textarea value={d.notes} onChange={e=>setD(x=>({...x,notes:e.target.value}))} rows={2}
-          style={{background:BG_DEEP,border:`1.5px solid ${BORDER}`,borderRadius:8,color:TEXT,fontSize:13,padding:"7px 10px",outline:"none",width:"100%",fontFamily:"inherit",resize:"none"}}/>
-      </div>
-      <div style={{display:"flex",gap:7}}>
-        <button onClick={()=>onSave(d)} style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${ACC_HI},${ACCENT})`,color:"#fff",fontSize:13,fontWeight:700,boxShadow:SO}}>Зберегти</button>
-        <button onClick={onCancel} style={{flex:1,padding:"10px",borderRadius:10,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO}}>Скасувати</button>
-      </div>
-    </div>
-  );
-}
-
-// ─── STUDENT CARD (collapsed row only) ──────────────────────────
+// ─── STUDENT CARD (colorway card) ────────────────────────────────
 function StudentCard({ s, onSelect }) {
   const { BG_DEEP, GREEN, GOLD, RED } = useContext(ThemeContext);
   const { shade, glow } = useFX();
@@ -249,7 +165,7 @@ function StudentCard({ s, onSelect }) {
 
       <div style={{position:"relative",zIndex:2,flex:1,minWidth:0}}>
         <div style={{fontSize:12.5,fontWeight:800,color:"#fff",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-          {s.name}{s.blocked && <span style={{fontSize:9,marginLeft:6}}>🚫</span>}
+          {s.isVip && "👑 "}{s.name}{s.blocked && <span style={{fontSize:9,marginLeft:6}}>🚫</span>}
         </div>
         <div style={{fontSize:10,color:"rgba(255,255,255,0.8)",fontWeight:700,marginTop:1}}>{typeLabel}</div>
       </div>
@@ -266,20 +182,18 @@ function StudentCard({ s, onSelect }) {
 
 // ─── STUDENT DETAIL SHEET ────────────────────────────────────────
 function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenHistory }) {
-  const { BG_DEEP, SURF_HI, SURFACE, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, GOLD, RED, SO, SI, SHADE, GLOW } = useContext(ThemeContext);
-  const shade = a => `rgba(${SHADE},${a})`;
-  const glow  = a => `rgba(${GLOW},${a})`;
-
-  const [closing,       setClosing]      = useState(false);
-  const [editMode,      setEditMode]     = useState(false);
-  const [confirmDel,    setConfirmDel]   = useState(false);
-  const [pendingDelete, setPendingDelete] = useState(false);
-  const [pushOpen,      setPushOpen]     = useState(false);
-  const [pushTitle,     setPushTitle]    = useState("Повідомлення");
-  const [pushBody,      setPushBody]     = useState("");
-  const [pushSending,   setPushSending]  = useState(false);
-  const [pushSent,      setPushSent]     = useState(false);
-  const [pushError,     setPushError]    = useState(null);
+  const { BG_DEEP, SURF_HI, SURFACE, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, GOLD, RED, SO, SI } = useContext(ThemeContext);
+  const { shade, glow, ink } = useFX();
+  const [closing,      setClosing]     = useState(false);
+  const [editMode,     setEditMode]    = useState(false);
+  const [confirmDel,   setConfirmDel]  = useState(false);
+  const [pendingDelete,setPendingDelete] = useState(false);
+  const [pushOpen,     setPushOpen]    = useState(false);
+  const [pushTitle,    setPushTitle]   = useState("Повідомлення");
+  const [pushBody,     setPushBody]    = useState("");
+  const [pushSending,  setPushSending] = useState(false);
+  const [pushSent,     setPushSent]    = useState(false);
+  const [pushError,    setPushError]   = useState(null);
   const [historyOpen,    setHistoryOpen]    = useState(false);
   const [history,        setHistory]        = useState(null); // null = ще не завантажено
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -372,7 +286,7 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenH
           }}
         >
           {/* Handle */}
-          <div style={{width:36,height:4,borderRadius:2,background:glow(0.15),margin:"10px auto 0",flexShrink:0}}/>
+          <div style={{width:36,height:4,borderRadius:2,background:glow(0.15),margin:"10px auto 0",flexShrink:0}} />
 
           {/* Header */}
           <div style={{
@@ -401,7 +315,11 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenH
           <div style={{flex:1,overflowY:"auto",padding:"14px 16px 28px",display:"flex",flexDirection:"column",gap:10}}>
 
             {editMode ? (
-              <EditForm s={s} onSave={patch=>{onUpdate(s.id,patch);setEditMode(false);}} onCancel={()=>setEditMode(false)}/>
+              <StudentForm
+                initial={{name:s.name,phone:s.phone,discount:s.discount??0,notes:s.notes||"",type:s.type,isVip:s.isVip||false,noIntervalLimit:s.noIntervalLimit||false}}
+                onSave={patch=>{onUpdate(s.id,patch);setEditMode(false);}}
+                onCancel={()=>setEditMode(false)}
+              />
             ) : confirmDel ? (
               <div style={{background:"rgba(239,68,68,0.08)",border:"1px solid rgba(239,68,68,0.25)",borderRadius:12,padding:"14px 14px",display:"flex",flexDirection:"column",gap:9}}>
                 <div style={{fontSize:13,fontWeight:800,color:"#fca5a5"}}>Видалити учня назавжди?</div>
@@ -480,14 +398,14 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenH
 
                 {/* Action buttons */}
                 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7}}>
-                  <Btn icon={ICONS.phone}    label="Дзвонити"   onClick={()=>{window.location.href=`tel:${s.phone}`;}}                    color={GREEN}/>
-                  <Btn icon={ICONS.viber}    label="Вайбер"     onClick={()=>{window.location.href=`viber://chat?number=%2B${phone}`;}}    color={BLUE}/>
-                  <Btn icon={ICONS.telegram} label="Телеграм"   onClick={()=>{window.open(`https://t.me/+${phone}`,"_blank");}}            color="#5b9bff"/>
-                  <Btn icon={ICONS.chat}     label="Чат"        onClick={()=>{navTo("chats");_close();}}                                   color={BLUE}/>
-                  <Btn icon={ICONS.bell}     label="Повідомлення" onClick={()=>{setPushOpen(true);setPushSent(false);setPushError(null);}} color={GOLD}/>
-                  <Btn icon={ICONS.history}  label="Історія"    onClick={toggleHistory} color={BLUE}/>
-                  <Btn icon={ICONS.edit}     label="Редагувати" onClick={()=>setEditMode(true)}/>
-                  <Btn icon={s.blocked?ICONS.unban:ICONS.ban} label={s.blocked?"Розблок.":"Заблок."} onClick={()=>onBlock(s.id)} danger={!s.blocked}/>
+                  <ActBtn icon={ICONS.phone}    label="Дзвонити"   onClick={()=>{window.location.href=`tel:${s.phone}`;}}                    color={GREEN}/>
+                  <ActBtn icon={ICONS.viber}    label="Вайбер"     onClick={()=>{window.location.href=`viber://chat?number=%2B${phone}`;}}    color={BLUE}/>
+                  <ActBtn icon={ICONS.telegram} label="Телеграм"   onClick={()=>{window.open(`https://t.me/+${phone}`,"_blank");}}            color="#5b9bff"/>
+                  <ActBtn icon={ICONS.chat}     label="Чат"        onClick={()=>{navTo("chats");_close();}}                                   color={BLUE}/>
+                  <ActBtn icon={ICONS.bell}     label="Повідомлення" onClick={()=>{setPushOpen(true);setPushSent(false);setPushError(null);}} color={GOLD}/>
+                  <ActBtn icon={ICONS.history}  label="Історія"    onClick={toggleHistory} color={BLUE}/>
+                  <ActBtn icon={ICONS.edit}     label="Редагувати" onClick={()=>setEditMode(true)}/>
+                  <ActBtn icon={s.blocked?ICONS.unban:ICONS.ban} label={s.blocked?"Розблок.":"Заблок."} onClick={()=>onBlock(s.id)} danger={!s.blocked}/>
                 </div>
 
                 {/* VIP toggle */}
@@ -501,7 +419,7 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenH
                     <div style={{fontSize:12,fontWeight:700,color:s.isVip?"#c084fc":TEXT}}>VIP учень</div>
                     <div style={{fontSize:10,color:FAINT,marginTop:2}}>{s.isVip?"Має доступ до VIP слотів":"Без доступу до VIP слотів"}</div>
                   </div>
-                  <div style={{width:36,height:20,borderRadius:10,position:"relative",background:s.isVip?"linear-gradient(145deg,#a855f7,#7c3aed)":glow(0.08),transition:"background .2s",flexShrink:0}}>
+                  <div style={{width:36,height:20,borderRadius:10,position:"relative",background:s.isVip?"linear-gradient(145deg,#a855f7,#7c3aed)":ink(0.08),transition:"background .2s",flexShrink:0}}>
                     <div style={{position:"absolute",top:2,left:s.isVip?18:2,width:16,height:16,borderRadius:8,background:"#fff",transition:"left .2s"}}/>
                   </div>
                 </div>
@@ -532,20 +450,20 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenH
                     {historyLoading ? (
                       <div style={{textAlign:"center",padding:"12px 0",color:FAINT,fontSize:12}}>Завантаження…</div>
                     ) : (history||[]).length > 0 ? (
-                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
-                      {history.map((b,i)=>{
-                        const [c,bg] = b.status==="confirmed"?[GREEN,"rgba(126,217,87,.1)"]:b.status==="cancelled"?[RED,"rgba(239,68,68,.1)"]:b.status==="noshow"?[RED,"rgba(239,68,68,.1)"]:[ACCENT,"rgba(255,90,60,.1)"];
-                        const icon = b.status==="confirmed"?"✓":b.status==="cancelled"?"✕":b.status==="noshow"?"⚠":"⏳";
-                        return (
-                          <div key={b.id||i} style={{display:"flex",alignItems:"center",gap:8,background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,borderRadius:9,padding:"7px 11px",boxShadow:SO}}>
-                            <span style={{fontSize:11,color:DIM,fontWeight:700,minWidth:48}}>{fmtS(b.date)}</span>
-                            <span style={{fontSize:11,color:BLUE,fontWeight:700,minWidth:34}}>{b.time}</span>
-                            <span style={{flex:1,fontSize:11,color:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.serviceName||b.svc||"—"}</span>
-                            <span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:5,background:bg,color:c}}>{icon}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                        {history.map((b,i)=>{
+                          const [c,bg] = b.status==="confirmed"?[GREEN,`${GREEN}1a`]:b.status==="cancelled"?[RED,`${RED}1a`]:b.status==="noshow"?[RED,`${RED}1a`]:[ACCENT,`${ACCENT}1a`];
+                          const icon = b.status==="confirmed"?"✓":b.status==="cancelled"?"✕":b.status==="noshow"?"⚠":"⏳";
+                          return (
+                            <div key={b.id||i} style={{display:"flex",alignItems:"center",gap:8,background:`linear-gradient(135deg,${SURF_HI},${SURFACE})`,borderRadius:9,padding:"7px 11px",boxShadow:SO}}>
+                              <span style={{fontSize:11,color:DIM,fontWeight:700,minWidth:48}}>{fmtS(b.date)}</span>
+                              <span style={{fontSize:11,color:BLUE,fontWeight:700,minWidth:34}}>{b.time}</span>
+                              <span style={{flex:1,fontSize:11,color:TEXT,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.serviceName||b.svc||"—"}</span>
+                              <span style={{fontSize:10,fontWeight:800,padding:"2px 7px",borderRadius:5,background:bg,color:c}}>{icon}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <div style={{textAlign:"center",padding:"12px 0",color:FAINT,fontSize:12}}>Записів ще немає</div>
                     )}
@@ -569,30 +487,28 @@ function StudentDetailSheet({ s, onClose, onUpdate, onDelete, onBlock, autoOpenH
 
 // ─── MAIN ────────────────────────────────────────────────────────
 export default function StudentsView({ studentJump, onStudentJumpHandled } = {}) {
-  const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, SO, SI } = useContext(ThemeContext);
+  const { BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, SO, SI } = useContext(ThemeContext);
+  const { ink } = useFX();
+
   const css = `
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:${BORDER};border-radius:2px}
 @keyframes ex{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 .ex{animation:ex .16s ease both}
-.btn{border:none;cursor:pointer;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 4px;transition:transform .1s,filter .1s;font-family:inherit}
-.btn:active{transform:scale(.92);filter:brightness(.8)}
-.btn span{font-size:9px;font-weight:700;letter-spacing:.2px}
-.icon3d{display:inline-flex;align-items:center;justify-content:center;border-radius:14px;position:relative;overflow:hidden;flex-shrink:0;box-shadow:-2px 4px 10px rgba(0,0,0,0.5),inset 1px 1px 0 rgba(255,255,255,0.25),inset -1px -1px 0 rgba(0,0,0,0.3)}
-.icon3d::before{content:'';position:absolute;top:0;right:0;width:60%;height:50%;background:radial-gradient(ellipse at top right,rgba(255,255,255,0.4) 0%,transparent 70%);pointer-events:none}
+.act-btn{border:none;cursor:pointer;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:9px 4px;transition:transform .1s,filter .1s;font-family:inherit}
+.act-btn:active{transform:scale(.92);filter:brightness(.8)}
+.act-btn span{font-size:9px;font-weight:700;letter-spacing:.2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 .sheet{animation:sheetUp .24s cubic-bezier(.32,.72,0,1) both}
 `;
-  const [students,      setStudents]      = useState([]);
-  const [detailStudent, setDetailStudent] = useState(null);
-  const [search,        setSearch]        = useState("");
-  const [filterType,    setFilterType]    = useState("all");
-  const [loading,       setLoading]       = useState(true);
-  const [showNew,       setShowNew]       = useState(false);
-  useBackClose(showNew, () => setShowNew(false));
+
+  const [students,     setStudents]     = useState([]);
+  const [detailStudent,setDetailStudent] = useState(null);
+  const [search,       setSearch]       = useState("");
+  const [filterType,   setFilterType]   = useState("all");
+  const [loading,      setLoading]      = useState(true);
+  const [showNew,      setShowNew]      = useState(false);
   const [autoOpenHistory, setAutoOpenHistory] = useState(false);
+  useBackClose(showNew, () => setShowNew(false));
 
   // Перехід із модалки запису в розкладі ("Профіль"/"Історія") — відкриваємо
   // картку учня, щойно список учнів завантажений
@@ -611,18 +527,13 @@ export default function StudentsView({ studentJump, onStudentJumpHandled } = {})
       setStudents(Object.entries(data).map(([uid, u]) => {
         const p = u.profile || {};
         return {
-          id:       uid,
-          name:     p.name      || u.name      || "Учень",
-          phone:    p.phone     || u.phone     || "",
-          type:     p.type      || u.type      || "private",
-          hours:       u.hours       || 0,
-          hoursOffset: u.hoursOffset || 0,
-          discount:    u.discount    || 0,
-          notes:    u.notes     || "",
-          blocked:  u.blocked   || false,
-          isVip:    u.isVip     || false,
-          filmingConsent: p.filmingConsent,
-          createdAt: p.createdAt || u.createdAt || null,
+          id:uid, name:p.name||u.name||"Учень", phone:p.phone||u.phone||"",
+          type:p.type||u.type||"private",
+          hours:u.hours||0, hoursOffset:u.hoursOffset||0,
+          discount:u.discount||0, notes:u.notes||"", blocked:u.blocked||false, isVip:u.isVip||false,
+          noIntervalLimit:u.noIntervalLimit||false,
+          filmingConsent:p.filmingConsent,
+          createdAt:p.createdAt||u.createdAt||null,
         };
       }));
       setLoading(false);
@@ -631,98 +542,81 @@ export default function StudentsView({ studentJump, onStudentJumpHandled } = {})
   }, []);
 
   const block = id => {
-    const s = students.find(x => x.id === id);
-    if (!s) return;
-    const next = !s.blocked;
-    setStudents(ss => ss.map(x => x.id===id ? {...x, blocked:next} : x));
-    update(ref(db, `users/${id}`), { blocked: next }).catch(() => {});
+    const s=students.find(x=>x.id===id); if(!s) return;
+    const next=!s.blocked;
+    setStudents(ss=>ss.map(x=>x.id===id?{...x,blocked:next}:x));
+    update(ref(db,`users/${id}`),{blocked:next}).catch(()=>{});
   };
-
-  const updateStudent = (id, patch) => {
-    setStudents(ss => ss.map(x => x.id===id ? {...x, ...patch} : x));
-    update(ref(db, `users/${id}`), patch).catch(() => {});
+  const updateStudent = (id,patch) => {
+    setStudents(ss=>ss.map(x=>x.id===id?{...x,...patch}:x));
+    update(ref(db,`users/${id}`),patch).catch(()=>{});
   };
-
   const deleteStudent = id => {
-    setStudents(ss => ss.filter(x => x.id !== id));
-    remove(ref(db, `users/${id}`)).catch(() => {});
+    setStudents(ss=>ss.filter(x=>x.id!==id));
+    remove(ref(db,`users/${id}`)).catch(()=>{});
   };
-
   const createStudent = async (data) => {
-    const newRef = await push(ref(db, "users"), {
-      name:     data.name.trim(),
-      phone:    data.phone.trim(),
-      type:     data.type,
-      discount: Number(data.discount) || 0,
-      notes:    data.notes.trim(),
-      blocked:  false,
-      isVip:    data.isVip||false,
-      hours:    0,
-      createdAt: Date.now(),
+    const newRef = await push(ref(db,"users"),{
+      name:data.name.trim(), phone:data.phone.trim(), type:data.type,
+      discount:Number(data.discount)||0, notes:data.notes.trim(), blocked:false,
+      isVip:data.isVip||false, hours:0,
+      createdAt:Date.now(),
     });
     setShowNew(false);
   };
 
-  const q = search.toLowerCase();
+  const q    = search.toLowerCase();
   const list = students
-    .filter(s =>
-      (!q || (s.name||"").toLowerCase().includes(q) || (s.phone||"").includes(q)) &&
-      (filterType==="all" || s.type===filterType)
-    )
+    .filter(s=>(!q||(s.name||"").toLowerCase().includes(q)||(s.phone||"").includes(q))&&(filterType==="all"||s.type===filterType))
     .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
 
   const liveDetail = detailStudent ? students.find(x=>x.id===detailStudent.id) : null;
 
   return (
     <>
+      <UICss/>
       <style>{css}</style>
       <div style={{display:"flex",flexDirection:"column",gap:8,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
-        {/* header */}
         <div style={{display:"flex",alignItems:"center",marginBottom:2}}>
           <div style={{fontSize:15,fontWeight:800,color:TEXT}}>Учні</div>
         </div>
 
-        {/* search */}
         <div style={{background:BG_DEEP,borderRadius:11,boxShadow:SI,padding:"3px 11px",display:"flex",alignItems:"center",gap:7}}>
           {ICONS.search}
           <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Ім'я або телефон…"
-            style={{flex:1,background:"transparent",border:"none",outline:"none",color:TEXT,padding:"9px 0",fontSize:13,minWidth:0}}/>
-          {search&&<button onClick={()=>setSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:FAINT,fontSize:16,padding:0,lineHeight:1}}>×</button>}
+            style={{flex:1,background:"transparent",border:"none",outline:"none",color:TEXT,padding:"9px 0",fontSize:13,minWidth:0,fontFamily:"inherit"}}/>
+          {search && <button onClick={()=>setSearch("")} style={{background:"none",border:"none",cursor:"pointer",color:FAINT,fontSize:16,padding:0,lineHeight:1}}>×</button>}
         </div>
 
-        {/* filter pills */}
         <div style={{display:"flex",gap:7}}>
           {[["all","Всі"],["school","Автошкола"],["private","Приватний"]].map(([k,l])=>(
             <button key={k} onClick={()=>setFilterType(k)} style={{
-              flex:1,padding:"9px 4px",borderRadius:11,border:"none",cursor:"pointer",
-              fontSize:11,fontWeight:700,
+              flex:1,padding:"9px 4px",borderRadius:11,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,fontFamily:"inherit",
               background:filterType===k?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
               color:filterType===k?"#fff":DIM,boxShadow:SO,
             }}>{l}</button>
           ))}
         </div>
 
-        {/* list */}
         {list.map(s=>(
-          <StudentCard key={s.id} s={s} onSelect={s=>setDetailStudent(s)}/>
+          <StudentCard key={s.id} s={s} onSelect={s=>setDetailStudent(s)} />
         ))}
 
         {loading && (
           <div style={{textAlign:"center",padding:"40px 20px",color:FAINT,fontSize:13}}>
-            <div style={{width:24,height:24,border:`2px solid rgba(255,255,255,0.06)`,borderTopColor:ACCENT,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 10px"}}/>
+            <div style={{width:24,height:24,border:`2px solid ${ink(0.06)}`,borderTopColor:ACCENT,borderRadius:"50%",animation:"spin .8s linear infinite",margin:"0 auto 10px"}}/>
             Завантаження…
           </div>
         )}
-        {!loading && list.length===0&&(
+        {!loading && list.length===0 && (
           <div style={{textAlign:"center",padding:"40px 20px"}}>
             <div style={{fontSize:36,opacity:.3,marginBottom:8}}>👥</div>
-            <div style={{fontSize:14,fontWeight:700,color:DIM}}>{search ? "Нікого не знайдено" : "Ще немає учнів"}</div>
+            <div style={{fontSize:14,fontWeight:700,color:DIM}}>{search?"Нікого не знайдено":"Ще немає учнів"}</div>
           </div>
         )}
       </div>
 
-      {/* ── FAB +Учень ── */}
       {createPortal(
         <button onClick={()=>setShowNew(true)} aria-label="Додати учня" style={{
           position:"fixed",right:18,bottom:104,zIndex:45,
@@ -738,10 +632,10 @@ export default function StudentsView({ studentJump, onStudentJumpHandled } = {})
         document.body
       )}
 
-      {/* ── Bottom sheet: новий учень ── */}
+      {/* New student sheet */}
       {showNew && createPortal(
         <div onClick={()=>setShowNew(false)} style={{
-          position:"fixed",inset:0,zIndex:200,background:"rgba(0,0,0,0.6)",
+          position:"fixed",inset:0,zIndex:200,background:ink(0.6),
           display:"flex",alignItems:"flex-end",justifyContent:"center",
           backdropFilter:"blur(8px)",
         }}>
@@ -752,14 +646,18 @@ export default function StudentsView({ studentJump, onStudentJumpHandled } = {})
             padding:"12px 16px calc(20px + env(safe-area-inset-bottom))",
             maxHeight:"88vh",overflowY:"auto",
           }}>
-            <div style={{width:38,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 14px"}}/>
-            <NewStudentForm onSave={createStudent} onCancel={()=>setShowNew(false)}/>
+            <div style={{width:38,height:4,borderRadius:2,background:ink(0.12),margin:"0 auto 14px"}}/>
+            <div style={{fontSize:14,fontWeight:800,color:TEXT,marginBottom:12}}>Новий учень</div>
+            <StudentForm
+              initial={{name:"",phone:"+380",discount:0,notes:"",type:"private",isVip:false,noIntervalLimit:false}}
+              onSave={createStudent} onCancel={()=>setShowNew(false)} saveLabel="Додати"
+            />
           </div>
         </div>,
         document.body
       )}
 
-      {/* ── Student detail sheet ── */}
+      {/* Student detail sheet */}
       {liveDetail && createPortal(
         <StudentDetailSheet
           s={liveDetail}

@@ -5,6 +5,7 @@ import { LangContext } from "../App";
 import { createT } from "../lang";
 
 import { ThemeContext } from "../theme.js";
+import { UICss, Card, useFX } from "../ui";
 
 const UK_MONTHS     = ["Січ","Лют","Бер","Кві","Тра","Чер","Лип","Сер","Вер","Жов","Лис","Гру"];
 const UK_WEEK_LABELS= ["Пн","Вт","Ср","Чт","Пт","Сб"];
@@ -227,19 +228,7 @@ function exportCSV(bookings, svcs) {
   URL.revokeObjectURL(url);
 }
 
-// ─── UI COMPONENTS ──────────────────────────────────────────────
-const Card = ({children, style={}}) => {
-  const { SURF_HI, SURFACE, BORDER } = useContext(ThemeContext);
-  return (
-    <div className="fu" style={{
-      background:`linear-gradient(155deg,${SURF_HI},${SURFACE})`,
-      borderRadius:13, overflow:"hidden",
-      boxShadow:`0 2px 8px rgba(0,0,0,.35),0 0 0 1px ${BORDER}`,
-      ...style,
-    }}>{children}</div>
-  );
-};
-
+// ─── INSET ───────────────────────────────────────────────────────
 const Inset = ({children, style={}}) => {
   const { SURF_HI, SURFACE, SI } = useContext(ThemeContext);
   return (
@@ -250,6 +239,7 @@ const Inset = ({children, style={}}) => {
 // ─── SVG LINE CHART ──────────────────────────────────────────────
 function LineChart({ data, valueKey, color, height=120 }) {
   const { FAINT } = useContext(ThemeContext);
+  const { ink } = useFX();
   const W=320, H=height, P=12;
   if (data.length < 2) return <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={height}/>;
   const vals = data.map(d => d[valueKey]);
@@ -272,7 +262,7 @@ function LineChart({ data, valueKey, color, height=120 }) {
         </linearGradient>
       </defs>
       {[0,.25,.5,.75,1].map(t=>(
-        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke={ink(0.06)} strokeWidth="1"/>
       ))}
       <path d={area} fill={`url(#${gid})`}/>
       <path className="line-anim" d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -290,6 +280,7 @@ function LineChart({ data, valueKey, color, height=120 }) {
 // ─── SVG BAR CHART ───────────────────────────────────────────────
 function BarChart({ data, valueKey, color, height=120 }) {
   const { FAINT } = useContext(ThemeContext);
+  const { ink } = useFX();
   const W=320, H=height, P=12;
   const vals = data.map(d => d[valueKey]);
   const max  = Math.max(...vals) || 1;
@@ -306,7 +297,7 @@ function BarChart({ data, valueKey, color, height=120 }) {
         ))}
       </defs>
       {[0,.5,1].map(t=>(
-        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke="rgba(255,255,255,0.04)" strokeWidth="1"/>
+        <line key={t} x1={P} y1={P+(1-t)*(H-P*2-10)} x2={W-P} y2={P+(1-t)*(H-P*2-10)} stroke={ink(0.06)} strokeWidth="1"/>
       ))}
       {data.map((d, i) => {
         const bH = ((d[valueKey]||0) / max) * (H - P*2 - 10);
@@ -326,12 +317,12 @@ function BarChart({ data, valueKey, color, height=120 }) {
 
 // ─── DONUT ───────────────────────────────────────────────────────
 function Donut({ school, total, size=76 }) {
-  const { SURF_HI, GREEN, GOLD, TEXT } = useContext(ThemeContext);
+  const { SURF_LO, GREEN, GOLD, TEXT } = useContext(ThemeContext);
   const pct = total ? school/total : 0;
   const r=26, cx=size/2, cy=size/2, c=2*Math.PI*r;
   return (
     <svg width={size} height={size}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke={SURF_HI} strokeWidth="9"/>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={SURF_LO} strokeWidth="9"/>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={GREEN} strokeWidth="9"
         strokeDasharray={`${pct*c} ${c}`} strokeDashoffset={c*.75} strokeLinecap="round"
         style={{filter:`drop-shadow(0 0 5px ${GREEN}66)`}}/>
@@ -348,7 +339,7 @@ const Chip = ({label, active, onClick, color}) => {
   const { ACC_HI, ACCENT, SURF_HI, SURFACE, DIM, SO } = useContext(ThemeContext);
   return (
     <button onClick={onClick} style={{
-      padding:"6px 12px", borderRadius:9, border:"none", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0,
+      padding:"6px 12px", borderRadius:9, border:"none", cursor:"pointer", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"inherit",
       background: active ? `linear-gradient(145deg,${color||ACC_HI},${color?color+"bb":ACCENT})` : `linear-gradient(145deg,${SURF_HI},${SURFACE})`,
       color: active ? "#fff" : DIM, boxShadow: active ? "none" : SO,
     }}>{label}</button>
@@ -370,9 +361,6 @@ export default function StatsView() {
   const [customTo,   setCustomTo]   = useState('');
 
   const css = `
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:4px}
-::-webkit-scrollbar-thumb{background:${BORDER};border-radius:2px}
 @keyframes bar-grow{from{height:0%}to{height:var(--h)}}
 @keyframes line-draw{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
 .line-anim{animation:line-draw 1s ease both}
@@ -451,6 +439,7 @@ export default function StatsView() {
 
   return (
     <>
+      <UICss/>
       <style>{css}</style>
       <div style={{display:"flex",flexDirection:"column",gap:8,fontFamily:"ui-sans-serif,-apple-system,system-ui,sans-serif",color:TEXT}}>
 
@@ -476,14 +465,14 @@ export default function StatsView() {
         {/* ── KPI 2×3 ── */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
           {[
-            {label:"Дохід",        value:fmtK(totalIncome),               sub:"за період",                         color:GOLD,                                            trend:trendPct(cur.income,  prev.income)},
-            {label:"Уроків",       value:totalLessons,                    sub:`${totalSchool}а · ${totalPrivate}п`, color:BLUE,                                            trend:trendPct(cur.lessons, prev.lessons)},
-            {label:"Серед. чек",   value:fmtK(avgCheck),                  sub:"дохід / урок",                      color:GREEN,                                           trend:trendPct(avgCheck, prevAvgCheck)},
-            {label:"No-show",      value:`${noshowPct}%`,                 sub:`скасувань: ${totalCancel}`,          color:noshowPct>5?RED:DIM,                             trend:trendPct(cur.noshow, prev.noshow) * -1},
+            {label:"Дохід",        value:fmtK(totalIncome),               sub:"за період",                         color:GOLD,                                       trend:trendPct(cur.income,  prev.income)},
+            {label:"Уроків",       value:totalLessons,                    sub:`${totalSchool}а · ${totalPrivate}п`, color:BLUE,                                       trend:trendPct(cur.lessons, prev.lessons)},
+            {label:"Серед. чек",   value:fmtK(avgCheck),                  sub:"дохід / урок",                      color:GREEN,                                      trend:trendPct(avgCheck, prevAvgCheck)},
+            {label:"No-show",      value:`${noshowPct}%`,                 sub:`скасувань: ${totalCancel}`,          color:noshowPct>5?RED:DIM,                        trend:trendPct(cur.noshow, prev.noshow) * -1},
             {label:"Заповненість", value:`${occupancy}%`,               sub:occupancySub,                        color:occupancy<50?RED:occupancy<80?GOLD:GREEN, trend:0},
-            {label:"Прогноз",      value:forecast!=null?fmtK(forecast):"—", sub:forecastSub,                      color:PURPLE,                                        trend:0},
+            {label:"Прогноз",      value:forecast!=null?fmtK(forecast):"—", sub:forecastSub,                      color:PURPLE,                                   trend:0},
           ].map((k, i) => (
-            <Card key={i} style={{
+            <Card key={i} className="fu" style={{
               padding:"12px 13px",
               background:`linear-gradient(155deg,color-mix(in srgb,${k.color} 20%,${BG_DEEP}),color-mix(in srgb,${k.color} 6%,${BG_DEEP}))`,
               border:`1px solid color-mix(in srgb,${k.color} 30%,transparent)`,
@@ -494,7 +483,7 @@ export default function StatsView() {
                   <span style={{
                     fontSize:9, fontWeight:800, padding:"2px 6px", borderRadius:6,
                     color:k.trend>=0?GREEN:RED,
-                    background:k.trend>=0?"rgba(126,217,87,0.12)":"rgba(239,68,68,0.12)",
+                    background:k.trend>=0?`${GREEN}1f`:`${RED}1f`,
                   }}>{k.trend>=0?"+":""}{k.trend}%</span>
                 )}
               </div>
@@ -505,7 +494,7 @@ export default function StatsView() {
         </div>
 
         {/* ── CHART ── */}
-        <Card style={{
+        <Card className="fu" style={{
           padding:"14px",
           background:`linear-gradient(155deg,color-mix(in srgb,${curMetric.color} 14%,${BG_DEEP}),color-mix(in srgb,${curMetric.color} 3%,${BG_DEEP}))`,
           border:`1px solid color-mix(in srgb,${curMetric.color} 24%,transparent)`,
@@ -515,13 +504,13 @@ export default function StatsView() {
             <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
               {METRICS.map(m=>(
                 <button key={m.id} onClick={()=>setMetric(m.id)} style={{
-                  padding:"4px 8px", borderRadius:7, border:"none", cursor:"pointer", fontSize:10, fontWeight:700,
+                  padding:"4px 8px", borderRadius:7, border:"none", cursor:"pointer", fontSize:10, fontWeight:700, fontFamily:"inherit",
                   background:metric===m.id?m.color:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
                   color:metric===m.id?"#fff":FAINT, boxShadow:SO,
                 }}>{m.label}</button>
               ))}
               <button onClick={()=>setChartType(t=>t==="line"?"bar":"line")} style={{
-                padding:"4px 10px", borderRadius:7, border:"none", cursor:"pointer", fontSize:11,
+                padding:"4px 10px", borderRadius:7, border:"none", cursor:"pointer", fontSize:11, fontFamily:"inherit",
                 background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`, color:DIM, boxShadow:SO,
               }}>{chartType==="line"?"📊":"📈"}</button>
             </div>
@@ -548,8 +537,7 @@ export default function StatsView() {
 
         {/* ── РОЗПОДІЛ + ПО ДНЯХ ── */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:7}}>
-
-          <Card style={{
+          <Card className="fu" style={{
             padding:"12px",
             background:`linear-gradient(155deg,color-mix(in srgb,${GREEN} 14%,${BG_DEEP}),color-mix(in srgb,${GREEN} 3%,${BG_DEEP}))`,
             border:`1px solid color-mix(in srgb,${GREEN} 24%,transparent)`,
@@ -569,7 +557,7 @@ export default function StatsView() {
             </div>
           </Card>
 
-          <Card style={{
+          <Card className="fu" style={{
             padding:"12px",
             background:`linear-gradient(155deg,color-mix(in srgb,${GOLD} 14%,${BG_DEEP}),color-mix(in srgb,${GOLD} 3%,${BG_DEEP}))`,
             border:`1px solid color-mix(in srgb,${GOLD} 24%,transparent)`,
@@ -593,7 +581,7 @@ export default function StatsView() {
 
         {/* ── ПОПУЛЯРНІ СЛОТИ ── */}
         {popularSlots.length > 0 && (
-          <Card style={{
+          <Card className="fu" style={{
             padding:"12px 13px",
             background:`linear-gradient(155deg,color-mix(in srgb,${GOLD} 14%,${BG_DEEP}),color-mix(in srgb,${GOLD} 3%,${BG_DEEP}))`,
             border:`1px solid color-mix(in srgb,${GOLD} 24%,transparent)`,
@@ -621,13 +609,13 @@ export default function StatsView() {
 
         {/* ── ТОП-5 ── */}
         {topStudents.length > 0 && (
-          <Card style={{padding:"12px 13px 8px"}}>
+          <Card className="fu" style={{padding:"12px 13px 8px"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
               <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700}}>Топ-5 учнів</div>
               <div style={{display:"flex",gap:5}}>
                 {[["paid","₴"],["lessons","год"]].map(([k,l])=>(
                   <button key={k} onClick={()=>setTopBy(k)} style={{
-                    padding:"3px 8px", borderRadius:6, border:"none", cursor:"pointer", fontSize:10, fontWeight:700,
+                    padding:"3px 8px", borderRadius:6, border:"none", cursor:"pointer", fontSize:10, fontWeight:700, fontFamily:"inherit",
                     background:topBy===k?GOLD:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
                     color:topBy===k?"#1a1a1a":FAINT, boxShadow:SO,
                   }}>{l}</button>
@@ -681,7 +669,7 @@ export default function StatsView() {
         )}
 
         {/* ── ЕКСПОРТ ── */}
-        <Card style={{padding:"12px"}}>
+        <Card className="fu" style={{padding:"12px"}}>
           <div style={{fontSize:9,color:FAINT,letterSpacing:1,textTransform:"uppercase",fontWeight:700,marginBottom:10}}>Експорт</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:7}}>
             {[
@@ -689,7 +677,7 @@ export default function StatsView() {
               {label:"PDF",   emoji:"📄", color:RED,   sub:"Для податкової", onClick:()=>window.print()},
             ].map(e=>(
               <button key={e.label} onClick={e.onClick} style={{
-                padding:"11px 6px", borderRadius:11, border:"none", cursor:"pointer",
+                padding:"11px 6px", borderRadius:11, border:"none", cursor:"pointer", fontFamily:"inherit",
                 background:`linear-gradient(155deg,color-mix(in srgb,${e.color} 22%,${BG_DEEP}),color-mix(in srgb,${e.color} 6%,${BG_DEEP}))`,
                 display:"flex", flexDirection:"column", alignItems:"center", gap:5, boxShadow:SO,
               }}>
