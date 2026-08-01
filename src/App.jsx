@@ -365,7 +365,7 @@ const DEFAULT_SETTINGS = {
   profile: { name:"Олександр", phone:"+380989225442", address:"Київ", experience:8, photo:null },
   workStart:7, workEnd:20, weekends:[6], daysShown:6, snapMin:30, slotCreateStep:30, hourHeightPx:60,
   lunchEnabled:true, lunchStart:12, lunchEnd:13, customBlocks:[], pendingEnabled:false,
-  theme:"light", language:"uk", queueAutoFifo:true, queueBroadcast:false, queueManual:false,
+  theme:"dark", language:"uk", queueAutoFifo:true, queueBroadcast:false, queueManual:false,
   studentCanReschedule:true, studentCanCancel:true, bookCutoffHours:2, calendarOpenDays:30,
   stickyTime:"both", notifLocation:"topbar", showCompleteBtn:true,
   navTabs:["schedule","journal","bookings","students","services","chats","templates","stats","settings"],
