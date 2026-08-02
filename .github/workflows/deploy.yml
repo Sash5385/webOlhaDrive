@@ -31,5 +31,5 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: |
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
-          npx firebase-tools deploy --only hosting:admin,database,functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive
+          npx firebase-tools deploy --only hosting:admin,database,functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive --force
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
