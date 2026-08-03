@@ -1,5 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense, createContext, useContext } from "react";
 import { useAppUpdate } from "./hooks/useAppUpdate"
+import { APP_VERSION } from "./version.js";
 import { ref, onValue, update, push, remove, get } from "firebase/database";
 import { db, registerAdminFCM, onAdminForegroundMessage } from "./firebase";
 import { useAdminAuth, LoginScreen } from "./AdminAuth";
@@ -987,7 +988,7 @@ const pendingDeletesRef = React.useRef(new Set());
         <div className={`update-banner${isUpdating ? ' update-banner--loading' : ''}`} onClick={updateServiceWorker}>
           {isUpdating
             ? <><span className="update-spinner" /> Оновлення...</>
-            : 'Доступне оновлення — натисніть щоб оновити'
+            : <>Доступне оновлення {APP_VERSION} — натисніть щоб оновити</>
           }
         </div>
       )}
