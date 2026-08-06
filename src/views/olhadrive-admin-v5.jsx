@@ -1707,6 +1707,13 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   for (let h = settings.workStart; h <= settings.workEnd; h++) hours.push(h);
 
   const slotColor = (b) => {
+    // Приватні уроки — завжди фіолетові, незалежно від тривалості.
+    if ((b.serviceType || b.type) === "private") return PURPLE;
+    // Колір запису залежить від тривалості: 1год=зелений, 1.5год=фіолетовий, 2год=м'ятний.
+    if (b.durMin === 60) return GREEN;
+    if (b.durMin === 90) return PURPLE;
+    if (b.durMin === 120) return colorOf("teal");
+    // Інші тривалості — за кольором послуги (як раніше).
     // Записи із самозапису клієнта (анкета) не мають serviceId — лише serviceType+durationHours.
     // Тому після точного збігу (id, потім тип+тривалість) додаємо запасний пошук просто за типом,
     // інакше колір послуги не застосовувався й картка падала в дефолтний GREEN.
@@ -2012,7 +2019,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   padding:"2px 4px", borderRadius:10, cursor: isPastDay ? "default" : "pointer",
                   opacity: isPastDay ? 0.35 : 1, overflow:"visible",
                   // Будні — зелені, вихідні — червоні (day.wk = субота/неділя).
-                  background: `linear-gradient(155deg, color-mix(in srgb, ${day.wk ? RED : GREEN} 22%, ${BG_DEEP}) 0%, ${BG_DEEP} 100%)`,
+                  background: `linear-gradient(155deg, color-mix(in srgb, color-mix(in srgb, ${day.wk ? RED : GREEN} 22%, ${BG_DEEP}) 78%, transparent) 0%, color-mix(in srgb, ${BG_DEEP} 78%, transparent) 100%)`,
+                  backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
                   boxShadow: `3px 3px 7px ${shade(0.4)}, -2px -2px 6px ${glow(0.06)}${isToday ? `, inset 0 0 0 1.5px ${GOLD}99` : isClosedDay ? `, inset 0 0 0 1.5px rgba(220,60,60,0.8)` : ""}`,
                 }}>
                 <div style={{fontSize:8.5, fontWeight:700, lineHeight:1.2,
@@ -2504,7 +2512,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   <div style={{
                     position:"sticky", bottom:0, zIndex:11,
                     flexShrink:0, marginTop:4,
-                    background: panel(SURF_HI, SURFACE),
+                    background: `linear-gradient(155deg, color-mix(in srgb, ${SURF_HI} 78%, transparent), color-mix(in srgb, ${SURFACE} 78%, transparent))`,
+                    backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)",
                     borderRadius:7,
                     border:`1px solid ${BORDER}`,
                     boxShadow: SO,
