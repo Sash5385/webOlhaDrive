@@ -840,6 +840,184 @@ function MonthCalendarSheet({ bookings, onClose, onPickDate }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// DAY NOTES MODAL — нотатка дня: вибір годин + текст
+// ═══════════════════════════════════════════════════════════════
+const _fmtHM = (min) => `${String(Math.floor(min/60)).padStart(2,"0")}:${String(min%60).padStart(2,"0")}`;
+
+function DayNotesModal({ dateStr, dayLabel, dayNum, dayMonth, note, settings, onClose }) {
+  const { BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, SO, SI } = useContext(ThemeContext);
+  const { glow, shade } = useFX();
+  const [closing, setClosing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editingHour, setEditingHour] = useState(null);
+  const _close = () => setClosing(true);
+
+  const hours = [];
+  for (let h = settings.workStart; h < settings.workEnd; h++) hours.push(h);
+
+  const [rows, setRows] = useState(() => {
+    const saved = note?.notes || {};
+    const init = {};
+    hours.forEach(h => {
+      const s = saved[h];
+      init[h] = s ? { startMin: s.startMin, text: s.text || "", notify: !!s.notify } : { startMin: h*60, text: "", notify: false };
+    });
+    return init;
+  });
+
+  const clampMin = (m) => Math.max(settings.workStart*60, Math.min(settings.workEnd*60 - 1, m));
+  const setRow = (h, patch) => setRows(rs => ({ ...rs, [h]: { ...rs[h], ...patch } }));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const notesOut = {};
+      hours.forEach(h => {
+        const r = rows[h];
+        if (r.text.trim() || r.notify) {
+          notesOut[h] = { startMin: r.startMin, text: r.text.trim(), notify: r.notify };
+        }
+      });
+      if (!Object.keys(notesOut).length) {
+        await remove(ref(db, `dayNotes/${dateStr}`));
+      } else {
+        await update(ref(db, `dayNotes/${dateStr}`), { notes: notesOut, updatedAt: Date.now() });
+      }
+      _close();
+    } catch (e) { /* ignore */ } finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    setSaving(true);
+    try { await remove(ref(db, `dayNotes/${dateStr}`)); _close(); }
+    catch (e) { /* ignore */ } finally { setSaving(false); }
+  };
+
+  const hasAnyNote = !!note;
+
+  return (
+    <>
+      <style>{`
+        @keyframes _dn-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+        @keyframes _dn-down{from{transform:translateY(0);opacity:1}to{transform:translateY(100%);opacity:0}}
+        @keyframes _dn-bg-in{from{opacity:0}to{opacity:1}}
+        @keyframes _dn-bg-out{from{opacity:1}to{opacity:0}}
+      `}</style>
+      <div onClick={closing ? undefined : _close} style={{
+        position:"fixed", inset:0, zIndex:9999,
+        background:shade(0.55), backdropFilter:"blur(8px)",
+        display:"flex", alignItems:"flex-end", justifyContent:"center",
+        animation: closing ? `_dn-bg-out 0.26s ease-in forwards` : `_dn-bg-in 0.2s ease-out`,
+      }}>
+        <div onClick={e=>e.stopPropagation()}
+          onAnimationEnd={closing ? ()=>{ setClosing(false); onClose(); } : undefined}
+          style={{
+            width:"100%", maxWidth:480, background:BG_DEEP,
+            borderRadius:"24px 24px 0 0",
+            boxShadow:`0 -2px 0 ${GOLD}33, 0 -16px 60px ${shade(0.6)}`,
+            maxHeight:"85vh", overflowY:"auto",
+            padding:"12px 16px calc(20px + env(safe-area-inset-bottom))",
+            boxSizing:"border-box",
+            animation: closing ? `_dn-down 0.26s ease-in forwards` : `_dn-up 0.38s cubic-bezier(0.34,1.56,0.64,1)`,
+          }}>
+          <div style={{width:36,height:4,borderRadius:2,background:glow(0.15),margin:"0 auto 12px"}}/>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <div style={{fontSize:14,fontWeight:800,color:TEXT}}>📝 Нотатки — {dayLabel}, {dayNum} {dayMonth}</div>
+            <div onClick={_close} style={{
+              width:26,height:26,borderRadius:8,background:"rgba(239,68,68,0.18)",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:"pointer",color:"#ef4444",fontSize:13,fontWeight:800,flexShrink:0,
+            }}>✕</div>
+          </div>
+          <div style={{fontSize:10.5,color:DIM,marginBottom:12,lineHeight:1.4}}>
+            Тап на час — обрати точний інтервал у межах години. Дзвіночок — увімкнути пуш-нагадування.
+          </div>
+
+          <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:16}}>
+            {hours.map(h=>{
+              const r = rows[h];
+              const isEditing = editingHour === h;
+              return (
+                <div key={h} style={{display:"flex",alignItems:"center",gap:8}}>
+                  {isEditing ? (
+                    <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+                      <button onClick={()=>setRow(h,{startMin:clampMin(r.startMin-60)})} style={{
+                        width:18,height:22,borderRadius:5,border:"none",cursor:"pointer",fontFamily:"inherit",
+                        background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:12,fontWeight:800,
+                        display:"flex",alignItems:"center",justifyContent:"center",padding:0,
+                      }}>−</button>
+                      <div style={{width:24,textAlign:"center",fontSize:11,fontWeight:800,color:TEXT,fontVariantNumeric:"tabular-nums"}}>
+                        {String(Math.floor(r.startMin/60)).padStart(2,"0")}
+                      </div>
+                      <button onClick={()=>setRow(h,{startMin:clampMin(r.startMin+60)})} style={{
+                        width:18,height:22,borderRadius:5,border:"none",cursor:"pointer",fontFamily:"inherit",
+                        background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:12,fontWeight:800,
+                        display:"flex",alignItems:"center",justifyContent:"center",padding:0,
+                      }}>+</button>
+                      <span style={{color:FAINT,fontSize:10}}>:</span>
+                      <button onClick={()=>setRow(h,{startMin:clampMin(r.startMin-1)})} style={{
+                        width:18,height:22,borderRadius:5,border:"none",cursor:"pointer",fontFamily:"inherit",
+                        background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:12,fontWeight:800,
+                        display:"flex",alignItems:"center",justifyContent:"center",padding:0,
+                      }}>−</button>
+                      <div style={{width:24,textAlign:"center",fontSize:11,fontWeight:800,color:TEXT,fontVariantNumeric:"tabular-nums"}}>
+                        {String(r.startMin%60).padStart(2,"0")}
+                      </div>
+                      <button onClick={()=>setRow(h,{startMin:clampMin(r.startMin+1)})} style={{
+                        width:18,height:22,borderRadius:5,border:"none",cursor:"pointer",fontFamily:"inherit",
+                        background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:12,fontWeight:800,
+                        display:"flex",alignItems:"center",justifyContent:"center",padding:0,
+                      }}>+</button>
+                      <div onClick={()=>setEditingHour(null)} style={{
+                        width:22,height:22,borderRadius:6,background:`${GOLD}33`,color:GOLD,
+                        display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:800,flexShrink:0,marginLeft:2,
+                      }}>✓</div>
+                    </div>
+                  ) : (
+                    <div onClick={()=>setEditingHour(h)} style={{
+                      width:44, flexShrink:0, cursor:"pointer", fontSize:10.5, fontWeight:800, color:GOLD,
+                      fontVariantNumeric:"tabular-nums", overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis",
+                    }}>{_fmtHM(r.startMin)}</div>
+                  )}
+                  <input value={r.text} onChange={e=>setRow(h,{text:e.target.value})} placeholder="—"
+                    style={{
+                      flex:1, minWidth:0, boxSizing:"border-box",
+                      background:`linear-gradient(135deg,${BG_DEEP},${SURF_LO})`,
+                      border:`1px solid ${BORDER}`, outline:"none", color:TEXT, fontSize:12,
+                      padding:"7px 9px", borderRadius:8, boxShadow:SI, fontFamily:"inherit",
+                    }}/>
+                  <div onClick={()=>setRow(h,{notify:!r.notify})} title={r.notify?"Нагадування увімкнено":"Нагадування вимкнено"} style={{
+                    width:26, height:26, borderRadius:8, flexShrink:0, cursor:"pointer",
+                    background: r.notify ? `${GOLD}2a` : `linear-gradient(145deg,${SURF_HI},${SURFACE})`,
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,
+                    boxShadow: r.notify ? "none" : SO,
+                  }}>{r.notify ? "🔔" : "🔕"}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{display:"flex",gap:8}}>
+            {hasAnyNote && (
+              <button onClick={handleDelete} disabled={saving} style={{
+                flex:1, padding:"11px", borderRadius:12, border:"1px solid rgba(239,68,68,0.25)",
+                cursor:"pointer", background:"rgba(239,68,68,0.08)", color:"#fca5a5",
+                fontSize:13, fontWeight:700, fontFamily:"inherit",
+              }}>Видалити всі</button>
+            )}
+            <button onClick={handleSave} disabled={saving} style={{
+              flex:2, padding:"11px", borderRadius:12, border:"none", cursor:"pointer",
+              background:`linear-gradient(145deg,${GOLD}cc,${GOLD}88)`, color:"#1a1a1a",
+              fontSize:13, fontWeight:800, fontFamily:"inherit", boxShadow:SO,
+            }}>{saving ? "Збереження…" : "Зберегти"}</button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // SCHEDULE VIEW with drag/resize + pinch-to-zoom + day-count
 // ═══════════════════════════════════════════════════════════════
 function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef, openSlotsRef, jumpTarget, setJumpTarget }) {
@@ -923,6 +1101,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const slotHoldFiredRef = useRef(false);
   const freeDragRef = useRef(null); // { dateStr, time, startClientY, startMin, moved, newStart }
   const [freeDragPreview, setFreeDragPreview] = useState(null); // { dateStr, time, newStart }
+  const freeResizeRef = useRef(null); // { dateStr, time, startClientY, startDur, maxDur, moved, newDur }
+  const [freeResizePreview, setFreeResizePreview] = useState(null); // { dateStr, time, newDur }
   const [openSlots, setOpenSlots] = useState({}); // { "2025-06-01": ["07:00","08:00",...] }
   const [viewingSlots, setViewingSlots] = useState({});
   const pendingSlotSnapRef = useRef(null);
@@ -950,6 +1130,12 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   }, []);
 
   useEffect(() => {
+    const r = ref(db, "dayNotes");
+    const unsub = onValue(r, snap => setDayNotes(snap.val() || {}));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
     const r = ref(db, "timeslots");
     const unsub = onValue(r, snap => {
       const val = snap.val() || {};
@@ -968,7 +1154,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             // phantom-вузли (створені лише під запис) не належать сітці дня
             if (!slot.phantom) slotSet.add(slotTime);
             if (slot.available !== false || slot.adminBlocked || slot.vipOnly || slot.surcharge) {
-              slotMap[slotTime] = { available: slot.available !== false, adminBlocked: !!slot.adminBlocked, vipOnly: !!slot.vipOnly, surcharge: slot.surcharge || null };
+              slotMap[slotTime] = { available: slot.available !== false, adminBlocked: !!slot.adminBlocked, vipOnly: !!slot.vipOnly, surcharge: slot.surcharge || null, durMin: slot.durMin || 60 };
             }
           }
           if (slot.viewing && Object.keys(slot.viewing).length > 0) viewTimes.push(slotTime);
@@ -1257,6 +1443,10 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const emptyHoldPosRef   = useRef(null);
   const dayLongPressRef   = useRef(null);
   const dayLongFiredRef   = useRef(false);
+  const dayClickTimerRef  = useRef(null);
+  const dayLastClickRef   = useRef(null); // { absDay, time } — для розпізнавання подвійного тапу
+  const [dayNotesModal, setDayNotesModal] = useState(null); // { dateStr, dayLabel, dayNum, dayMonth }
+  const [dayNotes, setDayNotes] = useState({}); // { "YYYY-MM-DD": { hours:[9,10], text:"...", updatedAt } }
   const [scheduleLocked, setScheduleLocked] = useState(() => localStorage.getItem("scheduleLocked") === "1");
   const lockHoldTimerRef  = useRef(null);
   const lockHoldFiredRef  = useRef(false);
@@ -1683,7 +1873,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       const newTime = `${h}:${m}`;
       if (newTime === fd.time) return;
       const bks = bookingsRef.current || [];
-      const occupiedByBooking = bks.some(b => b.date === fd.dateStr && b.startMin < fd.newStart + 60 && b.startMin + b.durMin > fd.newStart);
+      const durMin = fd.durMin || 60;
+      const occupiedByBooking = bks.some(b => b.date === fd.dateStr && b.startMin < fd.newStart + durMin && b.startMin + b.durMin > fd.newStart);
       const occupiedBySlot = !!((openSlotsRef?.current || {})[fd.dateStr] || {})[newTime];
       if (occupiedByBooking || occupiedBySlot) { navigator.vibrate?.([10,10,10]); return; }
       const oldSlotId = `slot${fd.time.replace(":", "")}`;
@@ -1692,6 +1883,74 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       updates[`timeslots/${fd.dateStr}/${oldSlotId}`] = null;
       updates[`timeslots/${fd.dateStr}/${newSlotId}/available`] = true;
       updates[`timeslots/${fd.dateStr}/${newSlotId}/time`] = newTime;
+      updates[`timeslots/${fd.dateStr}/${newSlotId}/durMin`] = durMin;
+      update(ref(db, "/"), updates).catch(() => {});
+      navigator.vibrate?.(20);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, []);
+
+  // Розтягування вільного слота (зміна тривалості) — ручка знизу, крок з Кроку часу (snapMin).
+  useEffect(() => {
+    const onMove = (e) => {
+      const fr = freeResizeRef.current;
+      if (!fr) return;
+      const dy = e.clientY - fr.startClientY;
+      if (!fr.moved && Math.abs(dy) > 6) {
+        fr.moved = true;
+        navigator.vibrate?.(15);
+      }
+      if (!fr.moved) return;
+      const { PX_PER_MIN, snapMin } = calcRef.current;
+      const deltaMin = dy / PX_PER_MIN;
+      let nd = Math.round((fr.startDur + deltaMin) / snapMin) * snapMin;
+      nd = Math.max(snapMin, Math.min(nd, fr.maxDur));
+      fr.newDur = nd;
+      setFreeResizePreview({ dateStr: fr.dateStr, time: fr.time, newDur: nd });
+    };
+    const onUp = () => {
+      const fr = freeResizeRef.current;
+      if (!fr) return;
+      freeResizeRef.current = null;
+      if (!fr.moved || fr.newDur === fr.startDur) { setFreeResizePreview(null); return; }
+      const [hh, mm] = fr.time.split(":").map(Number);
+      const startMin = hh * 60 + mm;
+      const newEnd = startMin + fr.newDur;
+      const slotId = `slot${fr.time.replace(":", "")}`;
+      const updates = { [`timeslots/${fr.dateStr}/${slotId}/durMin`]: fr.newDur };
+      // Ріст поглинає наступні вільні слоти, у які «в’їхав» новий розмір, —
+      // прибираємо їхні окремі документи, щоб не лишалось «розрізаних» дублікатів.
+      const daySlots = (openSlotsRef?.current || {})[fr.dateStr] || {};
+      const absorbedTimes = [];
+      Object.keys(daySlots).forEach(t => {
+        if (t === fr.time) return;
+        const [h2, m2] = t.split(":").map(Number);
+        const tm = h2 * 60 + m2;
+        if (tm > startMin && tm < newEnd) {
+          updates[`timeslots/${fr.dateStr}/slot${t.replace(":", "")}`] = null;
+          absorbedTimes.push(t);
+        }
+      });
+      // Оптимістично оновлюємо локальний стан одразу — інакше слот на мить
+      // «стрибає» назад до старої висоти, поки Firebase не підтвердить запис.
+      setOpenSlots(prev => {
+        const day = { ...(prev[fr.dateStr] || {}) };
+        if (day[fr.time]) day[fr.time] = { ...day[fr.time], durMin: fr.newDur };
+        absorbedTimes.forEach(t => delete day[t]);
+        return { ...prev, [fr.dateStr]: day };
+      });
+      if (openSlotsRef) {
+        const day = { ...(openSlotsRef.current[fr.dateStr] || {}) };
+        if (day[fr.time]) day[fr.time] = { ...day[fr.time], durMin: fr.newDur };
+        absorbedTimes.forEach(t => delete day[t]);
+        openSlotsRef.current = { ...openSlotsRef.current, [fr.dateStr]: day };
+      }
+      setFreeResizePreview(null);
       update(ref(db, "/"), updates).catch(() => {});
       navigator.vibrate?.(20);
     };
@@ -2007,13 +2266,34 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             }}>
               {/* DATE HEADER — sticky top, moves with column horizontally */}
               <div
-                onClick={e=>{ e.stopPropagation(); if(scheduleLocked) return; if(dayLongFiredRef.current){dayLongFiredRef.current=false;return;} if(isPastDay || isLoadingCol || isClosedDay) return; hasAnySlotsCol ? clearDaySlots(absDay) : generateDaySlots(absDay); }}
-                onPointerDown={e=>{ if(scheduleLocked || isPastDay) return; clearTimeout(dayLongPressRef.current); dayLongFiredRef.current=false; dayLongPressRef.current=setTimeout(()=>{ dayLongFiredRef.current=true; toggleDayBlocked(dateStrCol); }, 600); }}
+                onClick={e=>{
+                  e.stopPropagation();
+                  if(scheduleLocked) return;
+                  if(dayLongFiredRef.current){dayLongFiredRef.current=false;return;}
+                  if(isPastDay || isLoadingCol) return;
+                  const now = Date.now();
+                  if (dayLastClickRef.current && dayLastClickRef.current.absDay === absDay && now - dayLastClickRef.current.time < 350) {
+                    // Подвійний тап — закрити/відкрити день
+                    clearTimeout(dayClickTimerRef.current);
+                    dayLastClickRef.current = null;
+                    navigator.vibrate?.([20,20,20]);
+                    toggleDayBlocked(dateStrCol);
+                    return;
+                  }
+                  dayLastClickRef.current = { absDay, time: now };
+                  clearTimeout(dayClickTimerRef.current);
+                  dayClickTimerRef.current = setTimeout(()=>{
+                    dayLastClickRef.current = null;
+                    if (isClosedDay) return;
+                    hasAnySlotsCol ? clearDaySlots(absDay) : generateDaySlots(absDay);
+                  }, 300);
+                }}
+                onPointerDown={e=>{ if(scheduleLocked || isPastDay) return; clearTimeout(dayLongPressRef.current); dayLongFiredRef.current=false; dayLongPressRef.current=setTimeout(()=>{ dayLongFiredRef.current=true; navigator.vibrate?.(30); setDayNotesModal({ dateStr: dateStrCol, dayLabel: day.fullLabel, dayNum: day.num, dayMonth: day.monthFull }); }, 600); }}
                 onPointerUp={()=>clearTimeout(dayLongPressRef.current)}
                 onPointerLeave={()=>clearTimeout(dayLongPressRef.current)}
                 style={{
                   position:"sticky", top:0, zIndex:4,
-                  height:HEADER_H, flexShrink:0, marginBottom:4,
+                  height:HEADER_H, flexShrink:0, marginBottom:10,
                   display:"flex", flexDirection:"column", gap:1,
                   alignItems:"center", justifyContent:"center",
                   padding:"2px 4px", borderRadius:10, cursor: isPastDay ? "default" : "pointer",
@@ -2036,6 +2316,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 <div style={{position:"absolute", top:3, right:4, fontSize:8, lineHeight:1, opacity: isClosedDay ? 1 : 0.75,
                   color: isClosedDay ? RED : isLoadingCol ? FAINT : isOpenCol ? GREEN : FAINT,
                 }}>{isPastDay ? "" : isClosedDay ? "🔒" : isLoadingCol ? "…" : isOpenCol ? "✓" : "＋"}</div>
+                {dayNotes[dateStrCol] && (
+                  <div style={{position:"absolute", top:3, left:4, fontSize:8, lineHeight:1, color:GOLD}}>📝</div>
+                )}
                 {genToast?.absDay === absDay && (
                   <div style={{position:"absolute", bottom:-18, left:"50%", transform:"translateX(-50%)",
                     background: genToast.free > 0 ? "rgba(99,211,120,0.92)" : "rgba(220,80,80,0.92)",
@@ -2102,17 +2385,21 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 
               {/* Open/blocked/surcharge/VIP slot indicators */}
               {!isClosedDay && (()=>{
-                const sortedMins = Object.keys(openSlots[dateStrCol] || {})
+                const daySlots = openSlots[dateStrCol] || {};
+                const sortedMins = Object.keys(daySlots)
                   .map(t => { const [hh, mm] = t.split(':').map(Number); return hh*60+mm; })
                   .sort((a, b) => a - b);
-                return Object.entries(openSlots[dateStrCol] || {}).map(([time, slot]) => {
+                return Object.entries(daySlots).map(([time, slot]) => {
                 const [h, m] = time.split(":").map(Number);
                 const startMin = h * 60 + m;
                 if (startMin < effectiveWorkStart * 60 || startMin >= effectiveWorkEnd * 60) return null;
                 // Вільний/доступний слот, накритий записом (хоча б частково), не показуємо.
                 if (slot.available && slotCovered(startMin)) return null;
-                const nextMin = sortedMins.find(t => t > startMin) ?? (startMin + 60);
-                const slotHeightMin = Math.min(60, nextMin - startMin, effectiveWorkEnd * 60 - startMin);
+                // Якщо після цього слота більше немає документів (наприклад, усі поглинуті
+                // розтягуванням) — межею є кінець робочого дня, а не штучні +60 хв.
+                const nextMin = sortedMins.find(t => t > startMin) ?? (effectiveWorkEnd * 60);
+                const slotDurMin = slot.durMin || 60;
+                const slotHeightMin = Math.min(slotDurMin, nextMin - startMin, effectiveWorkEnd * 60 - startMin);
                 const isVip = slot.vipOnly;
                 const isBlocked = slot.adminBlocked;
                 const hasSurcharge = !!slot.surcharge;
@@ -2127,6 +2414,23 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 const isPlainFree = slot.available && !isVip && !isBlocked && !hasSurcharge;
                 const isBeingDragged = freeDragPreview && freeDragPreview.dateStr===dateStrCol && freeDragPreview.time===time;
                 const displayStartMin = isBeingDragged ? freeDragPreview.newStart : startMin;
+                // Розтягування вниз може поглинати наступні вільні слоти підряд (без запису,
+                // блокування, VIP чи надбавки) — межа росту не обмежена одним нижнім слотом,
+                // а йде до першого «непоглинаючого» слота/запису або кінця робочого дня.
+                let resizeLimitMin = effectiveWorkEnd * 60;
+                if (isPlainFree) {
+                  for (const t of sortedMins) {
+                    if (t <= startMin) continue;
+                    const hh2 = String(Math.floor(t / 60)).padStart(2, "0");
+                    const mm2 = String(t % 60).padStart(2, "0");
+                    const s2 = daySlots[`${hh2}:${mm2}`];
+                    const s2Free = s2 && s2.available && !s2.vipOnly && !s2.adminBlocked && !s2.surcharge;
+                    if (!s2Free || slotCovered(t)) { resizeLimitMin = t; break; }
+                  }
+                }
+                const maxDurMin = Math.max(settings.snapMin || 30, Math.min(resizeLimitMin - startMin, effectiveWorkEnd * 60 - startMin));
+                const isBeingResized = freeResizePreview && freeResizePreview.dateStr===dateStrCol && freeResizePreview.time===time;
+                const displayHeightMin = isBeingResized ? freeResizePreview.newDur : slotHeightMin;
                 return (
                   <div key={`os-${time}`}
                     onPointerDown={e=>{
@@ -2139,7 +2443,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         setSlotOptions({ dateStr: dateStrCol, time, startTime: time, slot });
                       }, 600);
                       if (isPlainFree) {
-                        freeDragRef.current = { dateStr: dateStrCol, time, startClientY: e.clientY, startMin, moved: false, newStart: startMin };
+                        freeDragRef.current = { dateStr: dateStrCol, time, startClientY: e.clientY, startMin, durMin: slotDurMin, moved: false, newStart: startMin };
                       }
                     }}
                     onPointerUp={()=>clearTimeout(slotHoldTimerRef.current)}
@@ -2152,16 +2456,16 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                     style={{
                       position:"absolute", left:0, right:0,
                       top: minToPx(displayStartMin) + 1,
-                      height: slotHeightMin * PX_PER_MIN - 2,
-                      opacity: isBeingDragged ? 0.95 : isSticky ? (isLight ? 0.9 : 0.9) : (isLight ? 0.85 : 0.85),
+                      height: displayHeightMin * PX_PER_MIN - 2,
+                      opacity: isBeingDragged || isBeingResized ? 0.95 : isSticky ? (isLight ? 0.9 : 0.9) : (isLight ? 0.85 : 0.85),
                       background: bg,
                       border: `1.5px solid ${borderColor}`,
-                      boxShadow: isBeingDragged ? `0 4px 14px rgba(0,0,0,0.35)` : emptyShadow,
-                      borderRadius:8, cursor: isPlainFree ? "grab" : "pointer", zIndex: isBeingDragged ? 6 : 1,
+                      boxShadow: isBeingDragged || isBeingResized ? `0 4px 14px rgba(0,0,0,0.35)` : emptyShadow,
+                      borderRadius:8, cursor: isPlainFree ? "grab" : "pointer", zIndex: isBeingDragged || isBeingResized ? 6 : 1,
                       display:"flex", flexDirection:"column",
                       alignItems:"center", justifyContent:"center",
                       padding:0,
-                      transition: isBeingDragged ? "none" : undefined,
+                      transition: isBeingDragged || isBeingResized ? "none" : undefined,
                       touchAction: isPlainFree ? "none" : "manipulation",
                       WebkitUserSelect:"none", userSelect:"none",
                     }}>
@@ -2175,6 +2479,50 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         <span style={{fontSize:7, fontWeight:800, color:GOLD, lineHeight:1}}>{qc}</span>
                       </div>
                     ) : null; })()}
+                    {isPlainFree && (displayHeightMin !== 60 || isBeingResized) && (
+                      <span style={{
+                        position:"absolute", top:3, left:"50%", transform:"translateX(-50%)",
+                        fontSize:8, fontWeight:800, color, background:"rgba(0,0,0,0.25)",
+                        padding:"1px 5px", borderRadius:5, lineHeight:1.3, whiteSpace:"nowrap", pointerEvents:"none",
+                      }}>
+                        {displayHeightMin % 60 === 0 ? `${displayHeightMin/60} год` : displayHeightMin < 60 ? `${displayHeightMin} хв` : `${Math.floor(displayHeightMin/60)}г ${displayHeightMin%60}хв`}
+                      </span>
+                    )}
+                    {isPlainFree && (
+                      // Час у вузькій колонці: "07:30–19:30" одним рядком не влазить —
+                      // розбиваємо початок/кінець на два рядки, щоб точно вміщалось.
+                      <div style={{
+                        display:"flex", flexDirection:"column", alignItems:"center",
+                        fontSize:7.5, fontWeight:800, color, lineHeight:1.2, pointerEvents:"none",
+                        textShadow: isLight ? "none" : "0 1px 2px rgba(0,0,0,0.4)",
+                      }}>
+                        <span>{_fmtHM(displayStartMin)}</span>
+                        <span>{_fmtHM(displayStartMin + displayHeightMin)}</span>
+                      </div>
+                    )}
+                    {isPlainFree && !isPastDay && !isClosedDay && (
+                      <div
+                        onPointerDown={e=>{
+                          if (scheduleLocked) return;
+                          e.stopPropagation(); e.preventDefault();
+                          clearTimeout(slotHoldTimerRef.current);
+                          freeResizeRef.current = { dateStr: dateStrCol, time, startClientY: e.clientY, startDur: slotDurMin, maxDur: maxDurMin, moved: false, newDur: slotDurMin };
+                        }}
+                        onClick={e=>e.stopPropagation()}
+                        style={{
+                          // Хіт-зона лишається ВСЕРЕДИНІ меж слота (bottom:0) — слоти йдуть впритул
+                          // один до одного, і зона, що стирчить за межі власного div, потрапляє під
+                          // сусідній слот у DOM-порядку та стає непроклацуваною. Пігулка (pointer-events:none)
+                          // може візуально стирчати нижче — на перехоплення подій це вже не впливає.
+                          position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)",
+                          width:44, height:22,
+                          display:"flex", alignItems:"flex-end", justifyContent:"center",
+                          cursor:"ns-resize", touchAction:"none", zIndex:7,
+                        }}
+                      >
+                        <div style={{width:26, height:8, borderRadius:5, background:borderColor, boxShadow:"0 2px 4px rgba(0,0,0,0.4)", pointerEvents:"none", transform:"translateY(5px)"}}/>
+                      </div>
+                    )}
                   </div>
                 );
               });
@@ -3277,6 +3625,17 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       </div>
     )}
     {broadcastInit && <BroadcastModal initialDate={broadcastInit.date} initialSlot={broadcastInit.slot} onClose={() => setBroadcastInit(null)}/>}
+    {dayNotesModal && (
+      <DayNotesModal
+        dateStr={dayNotesModal.dateStr}
+        dayLabel={dayNotesModal.dayLabel}
+        dayNum={dayNotesModal.dayNum}
+        dayMonth={dayNotesModal.dayMonth}
+        note={dayNotes[dayNotesModal.dateStr]}
+        settings={settings}
+        onClose={() => setDayNotesModal(null)}
+      />
+    )}
     </>
   );
 }
