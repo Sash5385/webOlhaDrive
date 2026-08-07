@@ -1021,7 +1021,7 @@ function DayNotesModal({ dateStr, dayLabel, dayNum, dayMonth, note, settings, on
 // SCHEDULE VIEW with drag/resize + pinch-to-zoom + day-count
 // ═══════════════════════════════════════════════════════════════
 function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef, openSlotsRef, jumpTarget, setJumpTarget }) {
-  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, BLUE, GREEN, GOLD, RED, SO, STRIPE_A, STRIPE_B } = useContext(ThemeContext);
+  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, BLUE, GREEN, GOLD, RED, PURPLE, SO, STRIPE_A, STRIPE_B } = useContext(ThemeContext);
   const isLight = BG !== "#1c1d21";
   const { glow, shade, ink } = useFX();
   const GRID_H  = isLight ? "rgba(0,0,0,0.09)"   : "rgba(255,255,255,0.07)";
@@ -2480,7 +2480,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 style={{
                   width:COL_W, height:gridHeight,
                   position:"relative", padding:"0 4px",
-                  background: isLight ? `linear-gradient(135deg,${SURF_LO},${BG_DEEP})` : `linear-gradient(135deg,${SURF_HI},${SURF_LO})`,
+                  background: isLight ? `linear-gradient(135deg,${SURF_LO},${BG_DEEP})` : `linear-gradient(135deg,color-mix(in srgb,${PURPLE} 16%,transparent),color-mix(in srgb,${PURPLE} 8%,transparent))`,
                   borderRadius:14, boxShadow:SHADOW_IN, cursor:"cell",
                   userSelect:"none", WebkitUserSelect:"none", WebkitTouchCallout:"none",
                 }}>
