@@ -3153,7 +3153,12 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     )}
 
     <BookingModal booking={localSelectedBooking} onClose={()=>setLocalSelectedBooking(null)}
-      onAction={handleAction} settings={settings}/>
+      onAction={handleAction} settings={settings}
+      mergeInfo={(() => {
+        const mi = localSelectedBooking && mergeInfoMap[localSelectedBooking.id];
+        if (!mi?.mergedIds?.length) return null;
+        return { durMin: mi.mergedDurMin, price: mi.mergedPrice, count: mi.mergedIds.length + 1 };
+      })()}/>
 
     {/* ── Модалка блокування ── */}
     {(blockModal || blockModalClosing) && (() => {
@@ -3958,7 +3963,7 @@ function CreateSlotSheet({ data, settings, onClose }) {
 // ═══════════════════════════════════════════════════════════════
 // BOOKING DETAIL MODAL
 // ═══════════════════════════════════════════════════════════════
-function BookingModal({ booking, onClose, onAction, settings }) {
+function BookingModal({ booking, onClose, onAction, settings, mergeInfo }) {
   const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, GOLD, RED, SO, SI } = useContext(ThemeContext);
   const SURFACE_HI = SURF_HI, SURFACE_LO = SURF_LO, TEXT_DIM = DIM, TEXT_FAINT = FAINT, ACCENT_HI = ACC_HI, SHADOW_OUT = SO, SHADOW_IN = SI;
   const { glow, shade, ink } = useFX();
@@ -4030,7 +4035,11 @@ function BookingModal({ booking, onClose, onAction, settings }) {
     : booking.price && booking.durationHours
       ? Math.round((booking.price / (booking.durationHours * 60)) * booking.durMin)
       : (booking.price || 0);
-  const price = basePrice + (booking.surcharge || 0);
+  // Сусідні записи цього учня об'єднані на картці розкладу — тут показуємо
+  // сумарну ціну й тривалість (booking сам лишається одним "чесним" записом
+  // для дій: скасувати/неявка/повтор діють лише на нього).
+  const durMinDisplay = mergeInfo ? mergeInfo.durMin : booking.durMin;
+  const price = mergeInfo ? mergeInfo.price : basePrice + (booking.surcharge || 0);
   const ini   = booking.name.trim().split(" ").slice(0, 2).map(w => w[0]).join("");
   const typeLabel = booking.type === "school" ? "🎓 Автошкола" : "🚗 Приватний";
 
@@ -4118,8 +4127,8 @@ function BookingModal({ booking, onClose, onAction, settings }) {
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,background:ink(0.06)}}>
             {[
               { label:"Дата",  val:`${day.num} ${day.month}`, sub:day.label },
-              { label:"Час",   val:`${fmtTime(booking.startMin)}`, sub:`–${fmtTime(booking.startMin+booking.durMin)}` },
-              { label:"Ціна",  val:`${price}₴`, sub: booking.surcharge ? `+${booking.surcharge}₴` : (svc ? `${svc.duration}хв` : "—"), gold: !!booking.surcharge },
+              { label:"Час",   val:`${fmtTime(booking.startMin)}`, sub:`–${fmtTime(booking.startMin+durMinDisplay)}` },
+              { label:"Ціна",  val:`${price}₴`, sub: mergeInfo ? `${mergeInfo.count} записи, ${durMinDisplay}хв` : booking.surcharge ? `+${booking.surcharge}₴` : (svc ? `${svc.duration}хв` : "—"), gold: !!booking.surcharge && !mergeInfo },
             ].map(({ label, val, sub, gold }, i) => (
               <div key={i} style={{
                 padding:"11px 6px",background:BG_DEEP,
