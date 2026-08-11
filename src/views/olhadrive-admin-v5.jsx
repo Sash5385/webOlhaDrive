@@ -2295,22 +2295,24 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
         {/* TIME COLUMN — fixed left, never scrolls */}
         <div
           onPointerDown={e=>{
-            // Стовпчик часу — не нащадок gridRef (він і не мусить сам скролитись),
-            // тому onPointerDownCapture на gridRef сюди не долітає, і swipeRef
-            // ніколи не ініціалізувався для дотиків, що починались тут — свайп
-            // звідси не міг працювати ВЗАГАЛІ. Ініціалізуємо вручну, так само,
-            // як це робить сам gridRef для дотиків усередині себе.
+            // Стовпчик часу — не нащадок gridRef, тому onPointerDownCapture на
+            // gridRef сюди не долітає — ініціалізуємо swipeRef вручну.
             swipeRef.current = { startX:e.clientX, startY:e.clientY, endX:e.clientX, endY:e.clientY, startTime:Date.now() };
           }}
           onPointerMove={e=>{
-            if (!swipeRef.current) return;
-            const dx = e.clientX - swipeRef.current.startX;
-            const dy = e.clientY - swipeRef.current.startY;
-            // Тут немає жодної конкуруючої функції (немає drag/resize) — досить
-            // невеликого зсуву, щоб віддати керування ручному скролу gridRef.
-            if (!swipeRef.current.manualScroll && Math.hypot(dx, dy) > 6) {
-              swipeRef.current.manualScroll = true;
-            }
+            const sr = swipeRef.current;
+            if (!sr) return;
+            const dx = sr.endX - e.clientX;
+            sr.endX = e.clientX;
+            sr.endY = e.clientY;
+            // Стовпчик часу керує ЛИШЕ горизонтальним гортанням днів — вертикальний
+            // скрол годин і так синхронізується автоматично з основної сітки
+            // (onScroll ставить transform на timeColRef). Тому рух завжди йде в
+            // scrollLeft, а не через спільний "домінантна вісь" механізм: коли
+            // рядки стиснуті (немає вертикального оверфлоу), той механізм міг
+            // обрати вертикальну вісь і застосувати scrollTop, який візуально
+            // нічого не змінював — свайп днями виглядав як "не працює".
+            if (gridRef.current) gridRef.current.scrollLeft += dx;
           }}
           style={{
           width:TIME_COL_W, flexShrink:0, zIndex:10,
