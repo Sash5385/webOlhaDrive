@@ -1753,17 +1753,27 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   useEffect(() => {
     const onMove = (e) => {
       if (swipeRef.current) {
-        const prevX = swipeRef.current.endX;
-        const prevY = swipeRef.current.endY;
         swipeRef.current.endX = e.clientX;
         swipeRef.current.endY = e.clientY;
         if (!dragRef.current && !pendingDragRef.current && swipeRef.current.manualScroll && gridRef.current) {
-          const dx = prevX - e.clientX;
-          const dy = prevY - e.clientY;
-          if (Math.abs(dx) >= Math.abs(dy)) {
-            gridRef.current.scrollLeft += dx;
+          // Абсолютний розрахунок від "якоря" (позиція й scrollLeft/scrollTop
+          // у момент, коли manualScroll щойно увімкнувся) — а не накопичення
+          // через += по кожній крихітній dx/dy. При += будь-яка втрачена/
+          // об'єднана подія pointermove назавжди "губить" частину відстані;
+          // тут же кожна подія наново рахує ПОВНУ відстань від якоря, тож
+          // рідкісні події не шкодять фінальному результату.
+          if (swipeRef.current.scrollAnchorX == null) {
+            swipeRef.current.scrollAnchorX = e.clientX;
+            swipeRef.current.scrollAnchorY = e.clientY;
+            swipeRef.current.scrollStartLeft = gridRef.current.scrollLeft;
+            swipeRef.current.scrollStartTop = gridRef.current.scrollTop;
+          }
+          const totalDx = swipeRef.current.scrollAnchorX - e.clientX;
+          const totalDy = swipeRef.current.scrollAnchorY - e.clientY;
+          if (Math.abs(totalDx) >= Math.abs(totalDy)) {
+            gridRef.current.scrollLeft = swipeRef.current.scrollStartLeft + totalDx;
           } else {
-            gridRef.current.scrollTop += dy;
+            gridRef.current.scrollTop = swipeRef.current.scrollStartTop + totalDy;
           }
         }
       }
@@ -2002,20 +2012,20 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       if (!fd) return;
       const dy = e.clientY - fd.startClientY;
       const dx = e.clientX - (fd.startClientX ?? e.clientX);
-      // Довгий тап відбувся, але після нього палець явно поїхав горизонтально
-      // (гортання днів свайпом), а не вертикально — відпускаємо жест повністю
-      // й передаємо керування ручному скролу (swipeRef.manualScroll). Нативне
-      // panning тут ненадійне (спостерігалась несистемна поведінка — то
-      // скролить, то ні на тій самій білдці) — тому керує лише JS, як і записи.
-      if (!fd.moved && Math.hypot(dx, dy) > 10 && Math.abs(dx) > Math.abs(dy) * 1.7) {
-        freeDragRef.current = null;
-        setFreeDragPreview(null);
-        if (swipeRef.current) swipeRef.current.manualScroll = true;
-        return;
-      }
-      // Поріг підняли з 6 до 10px — на дотику звичайний тап майже завжди трохи
-      // "плаває" в межах ~6px, і слот переміщувався сам собою від легкого дотику.
-      if (!fd.moved && Math.abs(dy) > 10) {
+      // Довгий тап відбувся, але після нього палець поїхав радше горизонтально,
+      // ніж вертикально (звичайний свайп гортання днів, а не намір тягнути
+      // слот) — відпускаємо жест повністю й передаємо керування ручному скролу.
+      // РАНІШЕ горизонтальна гілка вимагала dx>1.7dy (асиметрично суворіше, ніж
+      // вертикальна, якій було досить dy>10 незалежно від dx) — повільний свайп,
+      // що встигав "озброїти" перетягування до 8px зсуву в pre-arm перевірці,
+      // тут знову губився. Тепер обидві гілки симетричні: просто яка вісь більша.
+      if (!fd.moved && Math.hypot(dx, dy) > 10) {
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          freeDragRef.current = null;
+          setFreeDragPreview(null);
+          if (swipeRef.current) swipeRef.current.manualScroll = true;
+          return;
+        }
         fd.moved = true;
         clearTimeout(slotHoldTimerRef.current);
         navigator.vibrate?.(15);
@@ -2074,9 +2084,18 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       const fr = freeResizeRef.current;
       if (!fr) return;
       const dy = e.clientY - fr.startClientY;
+      const dx = e.clientX - (fr.startClientX ?? e.clientX);
       // Той самий поріг, що й для перетягування слота — захист від випадкового
-      // розтягування через легке тремтіння пальця під час тапу.
-      if (!fr.moved && Math.abs(dy) > 10) {
+      // розтягування через легке тремтіння пальця під час тапу. Якщо рух радше
+      // горизонтальний — це свайп днів, що "просочився" через довгий тап на
+      // маленькій ручці ресайзу коротких слотів: відпускаємо й передаємо скролу.
+      if (!fr.moved && Math.hypot(dx, dy) > 10) {
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          freeResizeRef.current = null;
+          setFreeResizePreview(null);
+          if (swipeRef.current) swipeRef.current.manualScroll = true;
+          return;
+        }
         fr.moved = true;
         navigator.vibrate?.(15);
       }
@@ -2295,22 +2314,23 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           onPointerDown={e=>{
             // Стовпчик часу — не нащадок gridRef, тому onPointerDownCapture на
             // gridRef сюди не долітає — ініціалізуємо swipeRef вручну.
-            swipeRef.current = { startX:e.clientX, startY:e.clientY, endX:e.clientX, endY:e.clientY, startTime:Date.now() };
+            swipeRef.current = {
+              startX:e.clientX, startY:e.clientY, endX:e.clientX, endY:e.clientY, startTime:Date.now(),
+              scrollAnchorX: e.clientX, scrollStartLeft: gridRef.current?.scrollLeft ?? 0,
+            };
           }}
           onPointerMove={e=>{
             const sr = swipeRef.current;
             if (!sr) return;
-            const dx = sr.endX - e.clientX;
             sr.endX = e.clientX;
             sr.endY = e.clientY;
             // Стовпчик часу керує ЛИШЕ горизонтальним гортанням днів — вертикальний
             // скрол годин і так синхронізується автоматично з основної сітки
-            // (onScroll ставить transform на timeColRef). Тому рух завжди йде в
-            // scrollLeft, а не через спільний "домінантна вісь" механізм: коли
-            // рядки стиснуті (немає вертикального оверфлоу), той механізм міг
-            // обрати вертикальну вісь і застосувати scrollTop, який візуально
-            // нічого не змінював — свайп днями виглядав як "не працює".
-            if (gridRef.current) gridRef.current.scrollLeft += dx;
+            // (onScroll ставить transform на timeColRef). Абсолютний розрахунок
+            // від якоря (а не += по кожній крихітній dx) — стійкий до рідкісних/
+            // згрупованих подій pointermove, які інакше "губили" би частину
+            // відстані й свайп днями виглядав як "не працює".
+            if (gridRef.current) gridRef.current.scrollLeft = sr.scrollStartLeft + (sr.scrollAnchorX - e.clientX);
           }}
           style={{
           width:TIME_COL_W, flexShrink:0, zIndex:10,
@@ -2819,21 +2839,30 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                           if (scheduleLocked) return;
                           e.stopPropagation(); e.preventDefault();
                           clearTimeout(slotHoldTimerRef.current);
-                          resizeHoldPosRef.current = { startY: e.clientY, lastY: e.clientY };
+                          resizeHoldPosRef.current = { startX: e.clientX, startY: e.clientY, lastY: e.clientY };
                           resizeHoldTimerRef.current = setTimeout(()=>{
                             const rp = resizeHoldPosRef.current;
                             if (!rp) return;
                             navigator.vibrate?.(20);
-                            freeResizeRef.current = { dateStr: dateStrCol, time, startClientY: rp.lastY, startDur: slotDurMin, maxDur: maxDurMin, moved: false, newDur: slotDurMin };
+                            freeResizeRef.current = { dateStr: dateStrCol, time, startClientY: rp.lastY, startClientX: rp.startX, startDur: slotDurMin, maxDur: maxDurMin, moved: false, newDur: slotDurMin };
                           }, 600);
                         }}
                         onPointerMove={e=>{
                           const rp = resizeHoldPosRef.current;
                           if (!rp || freeResizeRef.current) return;
                           rp.lastY = e.clientY;
-                          if (Math.abs(e.clientY - rp.startY) > 8) {
+                          const dx = e.clientX - rp.startX;
+                          const dy = e.clientY - rp.startY;
+                          // Маленька ручка ресайзу на короткому слоті займає велику частку
+                          // всієй висоти — дотик, що мав би бути свайпом днів, часто
+                          // потрапляє саме сюди. Та сама симетрична перевірка ("яка вісь
+                          // більша"), що й на самому слоті, передає керування скролу.
+                          if (Math.hypot(dx, dy) > 8) {
                             clearTimeout(resizeHoldTimerRef.current);
                             resizeHoldPosRef.current = null;
+                            if (Math.abs(dx) >= Math.abs(dy) && swipeRef.current) {
+                              swipeRef.current.manualScroll = true;
+                            }
                           }
                         }}
                         onPointerUp={()=>{ clearTimeout(resizeHoldTimerRef.current); resizeHoldPosRef.current = null; }}
