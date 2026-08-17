@@ -1,4 +1,6 @@
 import { useState, useContext } from "react";
+import { ref, get, update } from "firebase/database";
+import { db } from "../firebase";
 import { LangContext } from "../App";
 import { APP_VERSION } from "../version.js";
 import { ThemeContext } from "../theme.js";
@@ -205,6 +207,42 @@ select{color-scheme:${isKava?"light":"dark"}}
   const [showHint, setShowHint] = useState(false);
   const switchSection = (id) => { setActive(id); setShowHint(false); };
 
+  // Одноразове видалення історії записів (усіх статусів) з датою до сьогодні.
+  // Спочатку рахуємо, скільки записів буде видалено, і показуємо це число
+  // в підтвердженні — щоб адмін бачив масштаб дії перед незворотним видаленням.
+  const [deletingOld, setDeletingOld] = useState(false);
+  const [deleteOldResult, setDeleteOldResult] = useState(null);
+  const runDeleteOldBookings = async () => {
+    setDeletingOld(true);
+    setDeleteOldResult(null);
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const snap = await get(ref(db, "bookings"));
+      const root = snap.val() || {};
+      const paths = [];
+      Object.entries(root).forEach(([uid, userBookings]) => {
+        Object.entries(userBookings || {}).forEach(([bookingId, raw]) => {
+          if (raw && raw.date && raw.date < todayStr) paths.push(`bookings/${uid}/${bookingId}`);
+        });
+      });
+      if (paths.length === 0) {
+        setDeleteOldResult(0);
+        return;
+      }
+      if (!window.confirm(`Видалити ${paths.length} записів з датою до ${todayStr}? Дію НЕ можна скасувати.`)) {
+        return;
+      }
+      const updates = {};
+      paths.forEach(p => { updates[p] = null; });
+      await update(ref(db, "/"), updates);
+      setDeleteOldResult(paths.length);
+    } catch {
+      setDeleteOldResult("Помилка");
+    } finally {
+      setDeletingOld(false);
+    }
+  };
+
   const uk = lang !== "en";
   const SECTIONS = [
     { id:"schedule",   icon:"🕐", color:BLUE,   title:t('set.schedule.title'), label:uk?"Графік":"Sched." },
@@ -311,6 +349,25 @@ select{color-scheme:${isKava?"light":"dark"}}
                 <Chip key={v} label={`${v} хв`} active={(settings.slotCreateStep??30)===v} onClick={()=>upd("slotCreateStep",v)}/>
               ))}
             </div>
+          </div>
+          <div style={{borderRadius:10,padding:"10px",marginTop:5,background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,boxShadow:SO}}>
+            <div style={{fontSize:12,color:DIM,marginBottom:8}}>
+              Видаляє ВСІ записи (будь-якого статусу) з датою до сьогодні —
+              незворотно, по всій базі одразу.
+            </div>
+            <button onClick={runDeleteOldBookings} disabled={deletingOld} style={{
+              width:"100%", padding:"10px", borderRadius:9, border:"none",
+              cursor: deletingOld ? "default" : "pointer",
+              background: deletingOld ? `linear-gradient(145deg,${SURF_HI},${SURFACE})` : `linear-gradient(145deg,${RED},${RED}cc)`,
+              color:"#fff", fontSize:13, fontWeight:800,
+            }}>
+              {deletingOld ? "Видалення..." : "🗑️ Видалити історію до сьогодні"}
+            </button>
+            {deleteOldResult !== null && (
+              <div style={{fontSize:11, color:DIM, marginTop:6, textAlign:"center"}}>
+                {deleteOldResult === "Помилка" ? "Помилка при видаленні" : `Видалено: ${deleteOldResult}`}
+              </div>
+            )}
           </div>
         </div>
       );
