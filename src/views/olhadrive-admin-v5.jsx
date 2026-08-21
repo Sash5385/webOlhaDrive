@@ -328,7 +328,8 @@ const computeBookingPrice = (b, servicesList) => {
     : b.price && b.durationHours
       ? Math.round((b.price / (b.durationHours * 60)) * b.durMin)
       : (b.price || 0);
-  return basePrice + (b.surcharge || 0);
+  // Знижка учня (грн, фіксована сума) — застосовується до будь-якого запису.
+  return Math.max(0, basePrice + (b.surcharge || 0) - (b.discount || 0));
 };
 
 
@@ -4420,7 +4421,7 @@ function BookingModal({ booking, onClose, onAction, settings, mergeInfo }) {
             {[
               { label:"Дата",  val:`${day.num} ${day.month}`, sub:day.label },
               { label:"Час",   val:`${fmtTime(booking.startMin)}`, sub:`–${fmtTime(booking.startMin+durMinDisplay)}` },
-              { label:"Ціна",  val:`${price}₴`, sub: mergeInfo ? `${mergeInfo.count} записи, ${durMinDisplay}хв` : booking.surcharge ? `+${booking.surcharge}₴` : (svc ? `${svc.duration}хв` : "—"), gold: !!booking.surcharge && !mergeInfo },
+              { label:"Ціна",  val:`${price}₴`, sub: mergeInfo ? `${mergeInfo.count} записи, ${durMinDisplay}хв` : booking.surcharge && booking.discount ? `+${booking.surcharge}₴ / −${booking.discount}₴` : booking.surcharge ? `+${booking.surcharge}₴` : booking.discount ? `−${booking.discount}₴ знижка` : (svc ? `${svc.duration}хв` : "—"), gold: !!booking.surcharge && !mergeInfo },
             ].map(({ label, val, sub, gold }, i) => (
               <div key={i} style={{
                 padding:"11px 6px",background:BG_DEEP,
@@ -5808,47 +5809,63 @@ export default function App() {
     }).catch(() => {});
   }, []);
 
+  // Users map — потрібна лише для живого підтягування знижки учня (грн) у ціну запису.
+  const usersMapRef = useRef({});
+  const rawBookingsDataRef = useRef(null);
+  const processBookingsRef = useRef(null);
+  processBookingsRef.current = (d) => {
+    if (!d) { setBookings([]); return; }
+    const today = new Date(); today.setHours(0,0,0,0);
+    const all = [];
+    Object.entries(d).forEach(([uid, userBkgs]) => {
+      if (!userBkgs) return;
+      Object.entries(userBkgs).forEach(([bkId, raw]) => {
+        if (!raw) return;
+        const timeStr = raw.time || (raw.startMin != null ? fmtTime(raw.startMin) : "00:00");
+        const [hh, mm] = timeStr.split(":").map(Number);
+        const dateStr = raw.date || "";
+        let day = 0;
+        if (dateStr) {
+          const bkDate = new Date(dateStr + "T00:00:00");
+          day = Math.round((bkDate - today) / 86400000);
+        }
+        all.push({
+          ...raw,
+          id:       raw.id || bkId,
+          _fbKey:   bkId,
+          userId:   uid,
+          day,
+          date:     dateStr,
+          startMin: raw.startMin ?? (hh * 60 + mm),
+          durMin:   raw.durMin ?? (raw.durationHours ? raw.durationHours * 60 : 60),
+          name:     raw.studentName || raw.name || "Учень",
+          phone:    raw.phone || "",
+          type:     raw.serviceType || raw.type || "private",
+          status:   raw.status || "confirmed",
+          tsc:      raw.tsc || "",
+          hoursDone: raw.hours || raw.hoursDone || 0,
+          categoryId: raw.categoryId || null,
+          isVipOnly:  raw.isVipOnly || false,
+          discount: usersMapRef.current[uid]?.discount || 0,
+        });
+      });
+    });
+    setBookings(all);
+  };
+
+  useEffect(() => {
+    return onValue(ref(db, "users"), snap => {
+      usersMapRef.current = snap.val() || {};
+      if (rawBookingsDataRef.current !== null) processBookingsRef.current(rawBookingsDataRef.current);
+    });
+  }, []);
+
   // Load bookings from Firebase (realtime)
   useEffect(() => {
     const r = ref(db, "bookings");
     const handler = onValue(r, snap => {
-      const d = snap.val();
-      if (!d) { setBookings([]); return; }
-      const today = new Date(); today.setHours(0,0,0,0);
-      const all = [];
-      Object.entries(d).forEach(([uid, userBkgs]) => {
-        if (!userBkgs) return;
-        Object.entries(userBkgs).forEach(([bkId, raw]) => {
-          if (!raw) return;
-          const timeStr = raw.time || (raw.startMin != null ? fmtTime(raw.startMin) : "00:00");
-          const [hh, mm] = timeStr.split(":").map(Number);
-          const dateStr = raw.date || "";
-          let day = 0;
-          if (dateStr) {
-            const bkDate = new Date(dateStr + "T00:00:00");
-            day = Math.round((bkDate - today) / 86400000);
-          }
-          all.push({
-            ...raw,
-            id:       raw.id || bkId,
-            _fbKey:   bkId,
-            userId:   uid,
-            day,
-            date:     dateStr,
-            startMin: raw.startMin ?? (hh * 60 + mm),
-            durMin:   raw.durMin ?? (raw.durationHours ? raw.durationHours * 60 : 60),
-            name:     raw.studentName || raw.name || "Учень",
-            phone:    raw.phone || "",
-            type:     raw.serviceType || raw.type || "private",
-            status:   raw.status || "confirmed",
-            tsc:      raw.tsc || "",
-            hoursDone: raw.hours || raw.hoursDone || 0,
-            categoryId: raw.categoryId || null,
-            isVipOnly:  raw.isVipOnly || false,
-          });
-        });
-      });
-      setBookings(all);
+      rawBookingsDataRef.current = snap.val();
+      processBookingsRef.current(snap.val());
     });
     return () => off(r, "value", handler);
   }, []);
