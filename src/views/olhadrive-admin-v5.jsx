@@ -328,8 +328,9 @@ const computeBookingPrice = (b, servicesList) => {
     : b.price && b.durationHours
       ? Math.round((b.price / (b.durationHours * 60)) * b.durMin)
       : (b.price || 0);
-  // Знижка учня (грн, фіксована сума) — застосовується до будь-якого запису.
-  return Math.max(0, basePrice + (b.surcharge || 0) - (b.discount || 0));
+  // Знижка учня (грн/год, фіксована сума) — діє на годину, масштабується на тривалість.
+  const discount = (b.discount || 0) * (b.durMin / 60);
+  return Math.max(0, Math.round(basePrice + (b.surcharge || 0) - discount));
 };
 
 
@@ -4332,6 +4333,7 @@ function BookingModal({ booking, onClose, onAction, settings, mergeInfo }) {
   // сумарну ціну й тривалість (booking сам лишається одним "чесним" записом
   // для дій: скасувати/неявка/повтор діють лише на нього).
   const durMinDisplay = mergeInfo ? mergeInfo.durMin : booking.durMin;
+  const discountAmtDisplay = booking.discount ? Math.round(booking.discount * booking.durMin / 60) : 0;
   const price = mergeInfo ? mergeInfo.price : basePrice + (booking.surcharge || 0);
   const ini   = booking.name.trim().split(" ").slice(0, 2).map(w => w[0]).join("");
   const typeLabel = booking.type === "school" ? "🎓 Автошкола" : "🚗 Приватний";
@@ -4421,7 +4423,7 @@ function BookingModal({ booking, onClose, onAction, settings, mergeInfo }) {
             {[
               { label:"Дата",  val:`${day.num} ${day.month}`, sub:day.label },
               { label:"Час",   val:`${fmtTime(booking.startMin)}`, sub:`–${fmtTime(booking.startMin+durMinDisplay)}` },
-              { label:"Ціна",  val:`${price}₴`, sub: mergeInfo ? `${mergeInfo.count} записи, ${durMinDisplay}хв` : booking.surcharge && booking.discount ? `+${booking.surcharge}₴ / −${booking.discount}₴` : booking.surcharge ? `+${booking.surcharge}₴` : booking.discount ? `−${booking.discount}₴ знижка` : (svc ? `${svc.duration}хв` : "—"), gold: !!booking.surcharge && !mergeInfo },
+              { label:"Ціна",  val:`${price}₴`, sub: mergeInfo ? `${mergeInfo.count} записи, ${durMinDisplay}хв` : booking.surcharge && discountAmtDisplay ? `+${booking.surcharge}₴ / −${discountAmtDisplay}₴` : booking.surcharge ? `+${booking.surcharge}₴` : discountAmtDisplay ? `−${discountAmtDisplay}₴ знижка` : (svc ? `${svc.duration}хв` : "—"), gold: !!booking.surcharge && !mergeInfo },
             ].map(({ label, val, sub, gold }, i) => (
               <div key={i} style={{
                 padding:"11px 6px",background:BG_DEEP,
