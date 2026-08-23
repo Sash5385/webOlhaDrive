@@ -6289,4 +6289,4 @@ function PersonalEventModal({ data, onClose, onConfirm }) {
   );
 }
 
-export { ScheduleView, SettingsView };
+export { ScheduleView, SettingsView, MonthCalendarSheet };
