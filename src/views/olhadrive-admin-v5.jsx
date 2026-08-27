@@ -385,8 +385,9 @@ const DEFAULT_SETTINGS = {
   studentCanReschedule: true,
   studentCanCancel: true,
   bookCutoffHours: 2,       // min hours before slot for booking
-  calendarOpenDays: 30,     // how many days ahead visible to students (private lessons)
+  calendarOpenDays: 30,     // how many days ahead visible to private-lesson students
   schoolCalendarOpenDays: 14, // how many days ahead visible to school (автошкола) students
+  slotGenDays: 30,          // how many days ahead the "generate slots" button auto-fills
   minBookingIntervalDays: 0, // min days between any two bookings (0 = disabled)
   // sticky time
   stickyTime: "both",       // before | after | both
@@ -1424,7 +1425,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const generateAllSlots = async () => {
     setIsGeneratingAll(true);
     try {
-      const limit = settings.calendarOpenDays || 30;
+      const limit = settings.slotGenDays || 30;
       const allUpdates = {};
       // Clear timeslots for all active days first, then write fresh state
       const clearUpdates = {};
@@ -1449,7 +1450,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 
   // Чи є вже згенеровані слоти в межах діапазону автовиставлення (для тумблера ключика)
   const hasAnyGeneratedSlots = () => {
-    const limit = settings.calendarOpenDays || 30;
+    const limit = settings.slotGenDays || 30;
     for (let d = 0; d <= limit; d++) {
       const dateStr = absDayToDateStr(d);
       if (openSlots[dateStr] && Object.keys(openSlots[dateStr]).length) return true;
@@ -1461,7 +1462,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const clearAllSlots = async () => {
     setIsGeneratingAll(true);
     try {
-      const limit = settings.calendarOpenDays || 30;
+      const limit = settings.slotGenDays || 30;
       const clearUpdates = {};
       for (let d = 0; d <= limit; d++) {
         clearUpdates[`timeslots/${absDayToDateStr(d)}`] = null;
@@ -2482,8 +2483,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   <button
                     onClick={isGeneratingAll ? undefined : (slotsOn ? clearAllSlots : generateAllSlots)}
                     title={slotsOn
-                      ? `Зняти всі слоти (${settings.calendarOpenDays||30} днів)`
-                      : `Згенерувати слоти на ${settings.calendarOpenDays||30} днів за графіком`}
+                      ? `Зняти всі слоти (${settings.slotGenDays||30} днів)`
+                      : `Згенерувати слоти на ${settings.slotGenDays||30} днів за графіком`}
                     style={{
                       position:"relative", width:32, height:32, border:"none", cursor: isGeneratingAll?"default":"pointer",
                       background:"transparent", display:"flex", alignItems:"center", justifyContent:"center",
