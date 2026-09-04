@@ -1743,7 +1743,11 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     }
     if (minStart === Infinity) return; // немає ні записів, ні слотів у видимому діапазоні — висоту не чіпаємо
     const spanHours = Math.ceil((maxEnd - minStart) / 60);
-    const n = Math.max(6, Math.min(16, spanHours));
+    // Раніше n обрізався зверху до 16 год — якщо реальний діапазон записів
+    // ширший (напр. 18 год), висота рахувалась під 16 год і "зайві" години
+    // все одно вилазили за екран, вимагаючи ручного скролу. Без стелі —
+    // висота рядка рахується під РЕАЛЬНИЙ діапазон, скролу не лишається.
+    const n = Math.max(6, spanHours);
     const el = gridRef.current;
     if (!el) return;
     // availGridH (windowH - 156 - HEADER_H - 4) — лише ОЦІНКА видимої висоти
@@ -1761,7 +1765,11 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     const BOTTOM_BUFFER = 56; // місце під плашку суми дня знизу + запас на неточність вимірювання
     const usableH = Math.max(200, el.clientHeight - headerOffsetReal - BOTTOM_BUFFER);
     const autoPxPerMinBase = availGridH / totalMin; // той самий множник, що й у реальному PX_PER_MIN
-    const targetHpx = Math.max(60, Math.round(usableH / (n * autoPxPerMinBase)));
+    // Підлога була 60px — для широких діапазонів (13-16+ год) розрахована
+    // висота часто виходила саме нижче 60, і підлога піднімала її назад,
+    // через що контент знову не вміщався й доводилось скролити. 30px —
+    // та сама нижня межа, що вже діє при pinch/wheel zoom нижче.
+    const targetHpx = Math.max(30, Math.round(usableH / (n * autoPxPerMinBase)));
     // Мета "Авто" — бачити ВСІ записи одразу, без ручного скролу (не просто
     // підібрати висоту рядка). Тому разом зі зміною hourHeightPx запам'ятовуємо
     // час першого запису — окремий ефект нижче проскролить до нього, коли
