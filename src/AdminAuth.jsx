@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "./firebase";
 
 const ADMIN_UID = "N02ZGsiO4TOLE5lPfHuLr5iYWi92";
@@ -29,6 +29,8 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error,    setError]    = useState("");
   const [loading,  setLoading]  = useState(false);
+  const [resetMsg, setResetMsg] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const login = async () => {
     setError(""); setLoading(true);
@@ -37,6 +39,17 @@ export function LoginScreen() {
       if (cred.user.uid !== ADMIN_UID) { await signOut(auth); setError("Доступ заборонено"); }
     } catch { setError("Невірний email або пароль"); }
     finally { setLoading(false); }
+  };
+
+  const resetPassword = async () => {
+    if (!email) { setResetMsg("Спочатку введи email"); return; }
+    setError(""); setResetMsg(""); setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetMsg("Лист для скидання пароля надіслано на " + email);
+    } catch {
+      setResetMsg("Не вдалось надіслати лист — перевір email");
+    } finally { setResetLoading(false); }
   };
 
   return (
@@ -62,6 +75,12 @@ export function LoginScreen() {
           style={{ width:"100%", padding:"12px", borderRadius:12, background: loading||!email||!password ? "rgba(255,90,60,0.3)" : "linear-gradient(135deg,#ff7a5c,#ff5a3c)", border:"none", color:"#fff", fontSize:14, fontWeight:700, cursor: loading||!email||!password ? "default":"pointer" }}>
           {loading ? "Вхід..." : "Увійти"}
         </button>
+        <div style={{ textAlign:"center", marginTop:14 }}>
+          <span onClick={resetLoading?undefined:resetPassword} style={{ fontSize:12, color:DIM, cursor: resetLoading?"default":"pointer", textDecoration:"underline" }}>
+            {resetLoading ? "Надсилання…" : "Забули пароль?"}
+          </span>
+        </div>
+        {resetMsg && <div style={{ fontSize:12, color:DIM, textAlign:"center", marginTop:10, padding:"8px", borderRadius:8, background:"rgba(255,255,255,0.04)" }}>{resetMsg}</div>}
       </div>
     </div>
   );
