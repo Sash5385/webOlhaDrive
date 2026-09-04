@@ -1194,6 +1194,15 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const pendingSlotSnapTimerRef = useRef(null);
   const [genLoadingDays, setGenLoadingDays] = useState(new Set());
   const [isGeneratingAll, setIsGeneratingAll] = useState(false);
+  // Синхронний замок (не React-стан) проти повторного тапу по «Ключику»,
+  // поки перший виклик ще в польоті. setIsGeneratingAll(true) теж стається
+  // одразу, але сам onClick-пропс кнопки перемикається на undefined лише
+  // після наступного рендеру — на деяких WebView "привид-клік" (два click
+  // від одного дотику) встигав проскочити РАНІШЕ цього рендеру й запускав
+  // generateAllSlots ВДРУГЕ: другий виклик своїм власним clearUpdates
+  // затирав слоти, щойно записані першим — звідси "з'явились і одразу
+  // зникли". Ref перевіряється синхронно, без цього вікна.
+  const keyLockRef = useRef(false);
   const [genToast, setGenToast] = useState(null); // { absDay, free, blocked }
   const genToastTimer = useRef(null);
   useEffect(() => () => clearTimeout(genToastTimer.current), []);
@@ -2516,7 +2525,12 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                     @keyframes _key-pulse{0%{transform:scale(0.8);opacity:0.35}100%{transform:scale(1.7);opacity:0}}
                   `}</style>
                   <button
-                    onClick={isGeneratingAll ? undefined : (slotsOn ? clearAllSlots : generateAllSlots)}
+                    onClick={()=>{
+                      if (keyLockRef.current) return;
+                      keyLockRef.current = true;
+                      const action = hasAnyGeneratedSlots() ? clearAllSlots : generateAllSlots;
+                      Promise.resolve(action()).finally(()=>{ keyLockRef.current = false; });
+                    }}
                     title={slotsOn
                       ? `Зняти всі слоти (${settings.slotGenDays||30} днів)`
                       : `Згенерувати слоти на ${settings.slotGenDays||30} днів за графіком`}
