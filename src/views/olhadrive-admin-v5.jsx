@@ -1451,17 +1451,26 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     }
   };
 
+  // Видалення ЦІЛОГО дня (`timeslots/{date} = null`) прибирає одразу десятки
+  // дочірніх слот-записів — на кожному з яких висить той самий Cloud Function
+  // тригер, що й на записі. Один multi-path update() з 31 таким піддеревом
+  // зачіпає стільки ж реальних записів, скільки й генерація (~2000+), і так
+  // само може впертися у TOO_MANY_TRIGGERS — рахувати треба не кількість
+  // ключів у об'єкті, а кількість реальних записів під ними. Тому видаляємо
+  // дні ПО ОДНОМУ послідовно (кожен виклик — лише ~60-70 записів одного дня).
+  const clearDaysRange = async (limit) => {
+    for (let d = 0; d <= limit; d++) {
+      await remove(ref(db, `timeslots/${absDayToDateStr(d)}`));
+    }
+  };
+
   const generateAllSlots = async () => {
     setIsGeneratingAll(true);
     try {
       const limit = settings.slotGenDays || 30;
       const allUpdates = {};
       // Clear timeslots for all active days first, then write fresh state
-      const clearUpdates = {};
-      for (let d = 0; d <= limit; d++) {
-        clearUpdates[`timeslots/${absDayToDateStr(d)}`] = null;
-      }
-      await chunkedUpdate(clearUpdates);
+      await clearDaysRange(limit);
       // Now compute and write fresh slots (pass {} — no existing adminBlocked to preserve)
       // force НЕ передаємо: масова регенерація має поважати weekSchedule.enabled
       // (дні вихідного за тижневим шаблоном лишаються закритими). force=true —
@@ -1492,11 +1501,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     setIsGeneratingAll(true);
     try {
       const limit = settings.slotGenDays || 30;
-      const clearUpdates = {};
-      for (let d = 0; d <= limit; d++) {
-        clearUpdates[`timeslots/${absDayToDateStr(d)}`] = null;
-      }
-      await chunkedUpdate(clearUpdates);
+      await clearDaysRange(limit);
     } finally {
       setIsGeneratingAll(false);
     }
