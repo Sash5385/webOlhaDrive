@@ -1260,13 +1260,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       });
       if (slotExistsRef) slotExistsRef.current = exists;
       if (openSlotsRef) openSlotsRef.current = slots;
-      {
-        const totalDays = Object.keys(slots).length;
-        const totalSlots = Object.values(slots).reduce((n, m) => n + Object.keys(m).length, 0);
-        console.warn("[ONVALUE] timeslots snapshot: days=", totalDays, "slots=", totalSlots, "activeDragIds.size=", activeDragIds?.current?.size ?? "n/a");
-      }
       if (activeDragIds?.current?.size > 0) {
-        console.warn("[ONVALUE] DEFERRED (activeDragIds non-empty) — queuing snapshot instead of applying");
         pendingSlotSnapRef.current = { slots, viewing };
         // Запобіжник: якщо activeDragIds "зависне" непорожнім (застарілий id, що
         // ніколи не видалився — напр. після швидкого дотику одразу до двох
@@ -1326,11 +1320,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
             const hh = String(h).padStart(2, "0");
             const mm = String(m).padStart(2, "0");
             upd[`timeslots/${date}/slot${hh}${mm}/available`] = false;
-            console.warn("[SAFENET] blocking slot", date, time, "— covered by booking");
           }
         });
       });
-      if (Object.keys(upd).length) console.warn("[SAFENET] writing", Object.keys(upd).length, "keys", upd);
       // Дозаповнюємо прапорець bookingStart для КОЖНОГО завантаженого запису —
       // true на реальному старті, false на кожному проміжному 30-хв маркері
       // (не лише true на старті!) — інакше проміжні маркери старих бронювань
@@ -1444,8 +1436,22 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     }
   };
 
+  // Firebase RTDB відхиляє ОДИН update() з надто великою кількістю ключів
+  // помилкою TOO_MANY_TRIGGERS, якщо на шляху висять Cloud Functions-тригери
+  // (timeslots/{date}/{slotId} — onSlotFreed тощо): весь запис атомарно
+  // відхиляється повністю, тому "Ключик" на великих slotGenDays генерував
+  // слоти, які одразу зникали (клієнт оптимістично показував їх, а сервер
+  // відкидав весь запис). Розбиваємо на пачки — кожна пачка своя атомарна
+  // транзакція, у межах ліміту тригерів.
+  const CHUNK_SIZE = 400;
+  const chunkedUpdate = async (updates) => {
+    const entries = Object.entries(updates);
+    for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+      await update(ref(db, "/"), Object.fromEntries(entries.slice(i, i + CHUNK_SIZE)));
+    }
+  };
+
   const generateAllSlots = async () => {
-    console.warn("[KEY] generateAllSlots: START", new Date().toISOString());
     setIsGeneratingAll(true);
     try {
       const limit = settings.slotGenDays || 30;
@@ -1455,9 +1461,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       for (let d = 0; d <= limit; d++) {
         clearUpdates[`timeslots/${absDayToDateStr(d)}`] = null;
       }
-      console.warn("[KEY] generateAllSlots: clearing", limit + 1, "days");
-      await update(ref(db, "/"), clearUpdates);
-      console.warn("[KEY] generateAllSlots: cleared, now computing fresh slots");
+      await chunkedUpdate(clearUpdates);
       // Now compute and write fresh slots (pass {} — no existing adminBlocked to preserve)
       // force НЕ передаємо: масова регенерація має поважати weekSchedule.enabled
       // (дні вихідного за тижневим шаблоном лишаються закритими). force=true —
@@ -1467,10 +1471,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
         const result = computeDayUpdates(dateStr, {});
         if (result) Object.assign(allUpdates, result.updates);
       }
-      const keyCount = Object.keys(allUpdates).length;
-      console.warn("[KEY] generateAllSlots: writing", keyCount, "keys");
-      if (keyCount) await update(ref(db, "/"), allUpdates);
-      console.warn("[KEY] generateAllSlots: DONE", new Date().toISOString());
+      if (Object.keys(allUpdates).length) await chunkedUpdate(allUpdates);
     } finally {
       setIsGeneratingAll(false);
     }
@@ -1488,7 +1489,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 
   // Другий тап ключика — зняти всі згенеровані слоти назад
   const clearAllSlots = async () => {
-    console.warn("[KEY] clearAllSlots: START", new Date().toISOString());
     setIsGeneratingAll(true);
     try {
       const limit = settings.slotGenDays || 30;
@@ -1496,8 +1496,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       for (let d = 0; d <= limit; d++) {
         clearUpdates[`timeslots/${absDayToDateStr(d)}`] = null;
       }
-      await update(ref(db, "/"), clearUpdates);
-      console.warn("[KEY] clearAllSlots: DONE", new Date().toISOString());
+      await chunkedUpdate(clearUpdates);
     } finally {
       setIsGeneratingAll(false);
     }
@@ -1624,7 +1623,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const handleLockUp = () => clearTimeout(lockHoldTimerRef.current);
 
   const toggleDayBlocked = (dateStr) => {
-    console.warn("[DAYBLOCK] toggleDayBlocked called for", dateStr, new Date().toISOString());
     const overrides = settings.dateOverrides || [];
     const existing  = overrides.find(o => o.date === dateStr);
     const wasClosed = existing?.type === 'closed';
