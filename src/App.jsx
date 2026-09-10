@@ -540,6 +540,7 @@ export default function App() {
       // Data-only push — див. firebase-messaging-sw.js чому без "notification"
       const title = payload.data?.title || "OlhaDrive";
       const body  = payload.data?.body  || "";
+      const isAlarm = payload.data?.alarm === "1";
       if (Notification.permission === "granted" && "serviceWorker" in navigator) {
         navigator.serviceWorker.ready.then(reg => {
           reg.showNotification(title, {
@@ -547,6 +548,7 @@ export default function App() {
             icon: "/icon-192.png",
             tag: "admin-" + Date.now(),
             requireInteraction: true,
+            vibrate: isAlarm ? [400, 200, 400, 200, 400, 200, 400] : undefined,
             data: payload.data || {},
           });
         });
