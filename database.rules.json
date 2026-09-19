@@ -23,7 +23,18 @@
     },
     "timeslots": {
       ".read": true,
-      ".write": "auth != null"
+      ".write": "auth != null",
+      "$date": {
+        "$slotId": {
+          "vipOnly":       { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" },
+          "adminBlocked":  { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" },
+          "privateOnly":   { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" },
+          "surcharge":     { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" },
+          "fixedPrice":    { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" },
+          "lunchOverride": { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" },
+          "durMin":        { ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === data.val()" }
+        }
+      }
     },
     "bookings": {
       ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
@@ -33,7 +44,6 @@
       }
     },
     "queue": {
-      ".read": "auth != null",
       ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       "$slotKey": {
         "entries": {
@@ -42,6 +52,12 @@
             ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
           }
         }
+      }
+    },
+    "userQueue": {
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')",
+        ".write": "auth != null && (auth.uid === $uid || auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92')"
       }
     },
     "users": {
