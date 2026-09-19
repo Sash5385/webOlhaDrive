@@ -92,7 +92,7 @@ function SlotPreview({ svc, height=80 }) {
 // ─── SERVICE FORM MODAL ──────────────────────────────────────────
 function ServiceFormModal({ svc, onSave, onClose }) {
   const theme = useContext(ThemeContext);
-  const { SURFACE, BG, SURF_HI, TEXT, DIM, ACCENT, ACC_HI, GOLD, SO } = theme;
+  const { SURFACE, BG, SURF_HI, TEXT, DIM, FAINT, ACCENT, ACC_HI, GOLD, SO } = theme;
   const PALETTE = makePalette(theme);
   const isNew = !svc;
   const [form, setForm] = useState(svc || {
