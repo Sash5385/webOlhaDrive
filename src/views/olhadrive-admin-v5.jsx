@@ -3168,8 +3168,13 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                 }}/>
               )}
 
-              {/* Open/blocked/surcharge/VIP slot indicators */}
-              {!isClosedDay && (()=>{
+              {/* Open/blocked/surcharge/VIP slot indicators — рендеримо і на
+                  закритому дні: якщо там є реальні слоти (адмін вручну відкрив
+                  один слот через довгий тап → "Вільний слот"), вони мають бути
+                  видні й керовані, а не "невидимі" в адмінці попри те, що клієнт
+                  їх все одно бачить (timeslots/{date} читається без фільтра по
+                  статусу дня). На звичайному закритому дні тут просто пусто. */}
+              {(()=>{
                 const daySlots = openSlots[dateStrCol] || {};
                 const sortedMins = Object.keys(daySlots)
                   .map(t => { const [hh, mm] = t.split(':').map(Number); return hh*60+mm; })
@@ -3377,7 +3382,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         <span>{_fmtHM(displayStartMin + displayHeightMin)}</span>
                       </div>
                     )}
-                    {isPlainFree && !isPastDay && !isClosedDay && (
+                    {isPlainFree && !isPastDay && (
                       <div
                         onPointerDown={e=>{
                           if (scheduleLocked) return;
