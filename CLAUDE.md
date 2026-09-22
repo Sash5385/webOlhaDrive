@@ -27,24 +27,24 @@ OlhaDrive — SaaS-платформа онлайн-записи для инст�
 
 ---
 
-# Технологический стек
+# Технологический стек (фактический)
 
 ## Frontend
 
-- Next.js (App Router)
-- TypeScript
-- React
-- Tailwind CSS
+- React (JSX, без TypeScript)
+- Vite
+- vite-plugin-pwa
+- Обычный CSS (без Tailwind)
 
 ## Backend
 
-- Supabase
-- PostgreSQL
-- Row Level Security (RLS)
+- Firebase Authentication
+- Firebase Realtime Database (не Supabase/PostgreSQL)
+- Firebase Cloud Messaging (push-уведомления)
 
 ## Deploy
 
-- Vercel
+- Firebase Hosting (`firebase deploy --only hosting`)
 
 ---
 
