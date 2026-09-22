@@ -4196,8 +4196,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
               </div>
             </div>}
             {!ltmClosing && <div style={{display:"flex",gap:10}}>
-              {!_menu.isClosedDay && (
-                <button onClick={()=>{
+              {/* Доступна і на закритому дні — адмін може вручну відкрити
+                  окремий слот, не відкриваючи весь день. */}
+              <button onClick={()=>{
                   const _sm = _menu.selectedMin ?? _menu.startMin;
                   const _hh = String(Math.floor(_sm/60)).padStart(2,'0');
                   const _mm = String(_sm%60).padStart(2,'0');
@@ -4216,7 +4217,6 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   <span style={{fontSize:24}}>🕐</span>
                   Вільний слот
                 </button>
-              )}
               <button onClick={()=>{
                 setPersonalEventData({ dateStr: _menu.dateStr, time: fmtTime(_menu.selectedMin ?? _menu.startMin) });
                 _scatterLtm();
