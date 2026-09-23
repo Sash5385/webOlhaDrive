@@ -7,6 +7,7 @@ import { APP_VERSION } from "../version.js";
 import { ThemeContext } from "../theme.js";
 import { UICss, useFX } from "../ui";
 import { createT } from "../lang";
+import { useMosaicSwitch, MosaicOverlay } from "../mosaic";
 
 const DAY_NAMES = ["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
 
@@ -591,7 +592,8 @@ select{color-scheme:${isKava?"light":"dark"}}
     }
   }
 
-  const activeSec = SECTIONS.find(s => s.id === active);
+  const [displayedSection, mosaicPhase] = useMosaicSwitch(active);
+  const activeSec = SECTIONS.find(s => s.id === displayedSection);
 
   const forceUpdate = async () => {
     try {
@@ -618,10 +620,12 @@ select{color-scheme:${isKava?"light":"dark"}}
         {/* PANEL — section content */}
         <div style={{padding:"4px 4px 0", minWidth:0}}>
           <div style={{
+            position:"relative",
             borderRadius:16,
             boxShadow:`0 0 0 1.5px ${isKava?"rgba(0,0,0,0.14)":"rgba(255,255,255,0.18)"}, 0 8px 28px rgba(0,0,0,0.28)`,
             background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
             padding:"12px 14px 14px",
+            overflow:"hidden",
           }}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
               {activeSec && (
@@ -637,7 +641,8 @@ select{color-scheme:${isKava?"light":"dark"}}
                 boxShadow:SO,transition:"all .15s",
               }}>💡</button>
             </div>
-            {renderSection(active)}
+            {renderSection(displayedSection)}
+            <MosaicOverlay phase={mosaicPhase} tileColor={SURFACE}/>
           </div>
         </div>
 
