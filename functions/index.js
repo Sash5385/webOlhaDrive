@@ -278,6 +278,16 @@ async function getActiveTemplateText(triggerId, vars = {}) {
   return { title: tpl.title || "Повідомлення", body: renderTemplateBody(tpl.body, vars) };
 }
 
+// Формат тексту пуша "Новий запис": ім'я · послуга тривалість / дата о час · телефон
+function buildNewBookingBody(after, name, date, time) {
+  const svc = after.serviceName || after.service || "";
+  const durH = after.durationHours || (after.durMin ? after.durMin / 60 : 1);
+  const phone = after.phone || after.studentPhone || "";
+  const line1 = svc ? `${name} · ${svc} ${durH} год` : `${name} · ${durH} год`;
+  const line2 = phone ? `${date} о ${time} · ${phone}` : `${date} о ${time}`;
+  return `${line1}\n${line2}`;
+}
+
 // Хелпер: відправити push адміну (на всі зареєстровані пристрої)
 async function pushAdmin(title, body, data = {}) {
   const snap = await db.ref("admin/fcmTokens").get();
@@ -389,7 +399,7 @@ exports.onBookingChanged = onValueWritten(
         // (особисті події адміна не мають генерувати цей пуш — у них є власне
         // нагадування-будильник через sendPersonalEventReminders)
         console.log(`onBookingChanged: new booking uid=${uid}`);
-        await pushAdmin("📋 Новий запис", `${name} · ${date} о ${time}`, { url: adminLink() });
+        await pushAdmin("📋 Новий запис", buildNewBookingBody(after, name, date, time), { url: adminLink() });
       }
       return;
     }
