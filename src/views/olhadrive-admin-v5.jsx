@@ -20,6 +20,7 @@ const blockSlotRange = async (dateStr, startMin, durMin, opts) => {
 
 import { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, ACC_HI, GREEN, BLUE, PURPLE, GOLD, RED, SO, SI, ThemeContext } from "../theme.js";
 import { useFX, panel, SCRIM, Modal as UIModal } from "../ui.jsx";
+import { MANUAL_DEFAULT_COLOR } from "../studentColors";
 // local aliases for legacy names used in this file
 const SURFACE_HI = SURF_HI;
 const SURFACE_LO = SURF_LO;
@@ -2599,7 +2600,20 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     keys.forEach((k, i) => { map[k] = STUDENT_PALETTE[i % STUDENT_PALETTE.length]; });
     return map;
   }, [bookings]);
+  // Ручний режим (тумблер "Автокольори учнів" вимкнено): колір бере з картки учня
+  // (users/{uid}/slotColor); без призначеного — нейтральний.
+  const [manualStudentColors, setManualStudentColors] = useState({});
+  useEffect(() => {
+    const r = ref(db, "users");
+    const h = onValue(r, snap => {
+      const m = {};
+      Object.entries(snap.val() || {}).forEach(([uid, u]) => { if (u && u.slotColor) m[uid] = u.slotColor; });
+      setManualStudentColors(m);
+    });
+    return () => off(r, "value", h);
+  }, []);
   const studentColor = (b) => {
+    if (settings.autoStudentColors === false) return manualStudentColors[b.userId] || MANUAL_DEFAULT_COLOR;
     const key = b.userId || b.phone || b.name || b.id;
     return studentColorMap[key] || STUDENT_PALETTE[0];
   };
