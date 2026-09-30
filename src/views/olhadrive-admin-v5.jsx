@@ -1143,6 +1143,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   // Зміни слота (приватний / закрити-відкрити) — лише по ДВОМУ тапу підряд по тому самому слоту
   // (до 350 мс), щоб випадковий дотик під час скролу нічого не міняв.
   const slotTapRef = useRef({ key: null, t: 0 });
+  // Був рух пальця (свайп) після торкання слота — подальший "click" від браузера тапом не вважаємо
+  const slotMovedRef = useRef(false);
   const isDoubleTapOnSlot = (key) => {
     const now = Date.now();
     const last = slotTapRef.current;
@@ -3232,6 +3234,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   <div key={`os-${time}`}
                     onPointerDown={e=>{
                       if (isPastDay) return;
+                      slotMovedRef.current = false;
                       // Заявляємо дотик БЕЗ stopPropagation — він, судячи з усього,
                       // заважає нативному touch-action панорамуванню на реальних
                       // мобільних браузерах (так само, як і в кейсі з заблокованим
@@ -3280,6 +3283,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         // Замочок закритий: жодного перетягування слота — будь-який рух
                         // (в будь-якому напрямку) одразу віддає жест ручному скролу.
                         if (Math.hypot(dx, dy) > 8) {
+                          slotMovedRef.current = true;
                           slotPressRef.current = null;
                           if (swipeRef.current) swipeRef.current.manualScroll = true;
                         }
@@ -3294,6 +3298,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                       // передачі керування — свайп виглядав неробочим для звичайних, не
                       // ідеально горизонтальних дотиків.
                       if (Math.hypot(dx, dy) > 8) {
+                          slotMovedRef.current = true;
                         clearTimeout(slotHoldTimerRef.current);
                         slotPressRef.current = null;
                         if (swipeRef.current) swipeRef.current.manualScroll = true;
@@ -3323,6 +3328,8 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                     onClick={e=>{
                       e.stopPropagation();
                       if (isPastDay || slotHoldFiredRef.current || isPlainFree) return;
+                      // Свайп, що почався на слоті, теж породжує click — це не тап
+                      if (slotMovedRef.current) { slotMovedRef.current = false; return; }
                       if (!isDoubleTapOnSlot(`${dateStrCol}_${time}`)) return;
                       toggleSlotFree(dateStrCol, time, slot);
                     }}
