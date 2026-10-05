@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { ref, onValue, update, push, remove } from "firebase/database";
+import { ref, onValue, update, remove } from "firebase/database";
 import { db } from "../firebase";
 
 import { ThemeContext } from "../theme.js";
@@ -27,66 +27,6 @@ const SERVICES = {
   sv3:{ name:"Приватний 1г", color:"#f7c948", type:"private" },
   sv4:{ name:"Приватний 2г", color:"#f7c948", type:"private" },
 };
-
-// ─── ADD TO QUEUE MODAL ─────────────────────────────────────────
-function AddToQueueModal({ onSave, onClose, svcs }) {
-  const { BG, BG_DEEP, SURFACE, SURF_HI, BORDER, TEXT, DIM, FAINT, SO } = useContext(ThemeContext);
-  const [form, setForm] = useState({ name:"", phone:"", svcId:"sv1" });
-  const upd = (k,v) => setForm(f=>({...f,[k]:v}));
-  const valid = form.name.trim() && form.phone.trim();
-  return (
-    <div onClick={onClose} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:150,display:"flex",alignItems:"flex-end",backdropFilter:"blur(8px)"}}>
-      <div onClick={e=>e.stopPropagation()} style={{
-        position:"relative",
-        width:"100%",maxWidth:520,margin:"0 auto",
-        background:`linear-gradient(180deg,${SURFACE},${BG})`,
-        borderRadius:"24px 24px 0 0",padding:"20px 18px 36px",
-      }}>
-        <button onClick={onClose} style={{
-          position:"absolute",top:10,right:12,zIndex:5,
-          width:26,height:26,borderRadius:8,border:"none",cursor:"pointer",
-          background:"rgba(239,68,68,0.18)",color:"#ef4444",
-          display:"flex",alignItems:"center",justifyContent:"center",
-          fontSize:13,fontWeight:800,lineHeight:1,
-        }}>✕</button>
-        <div style={{width:36,height:4,borderRadius:2,background:"rgba(255,255,255,0.12)",margin:"0 auto 16px"}}/>
-        <div style={{fontSize:16,fontWeight:800,color:TEXT,marginBottom:16}}>⏳ Додати до черги</div>
-        {[
-          {k:"name",  label:"Ім'я учня",   placeholder:"Ім'я Прізвище", type:"text"},
-          {k:"phone", label:"Телефон",      placeholder:"+380...",       type:"tel"},
-        ].map(f=>(
-          <div key={f.k} style={{marginBottom:12}}>
-            <div style={{fontSize:10,color:FAINT,letterSpacing:1,marginBottom:5}}>{f.label.toUpperCase()}</div>
-            <input type={f.type} value={form[f.k]} onChange={e=>upd(f.k,e.target.value)}
-              placeholder={f.placeholder}
-              style={{width:"100%",background:BG_DEEP,border:`1px solid ${BORDER}`,borderRadius:10,padding:"10px 14px",color:TEXT,fontSize:14,outline:"none",boxSizing:"border-box"}}/>
-          </div>
-        ))}
-        <div style={{marginBottom:16}}>
-          <div style={{fontSize:10,color:FAINT,letterSpacing:1,marginBottom:5}}>ПОСЛУГА</div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {Object.entries(svcs || SERVICES).map(([id,s])=>(
-              <button key={id} onClick={()=>upd("svcId",id)} style={{
-                padding:"6px 12px",borderRadius:9,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,
-                background:form.svcId===id?`linear-gradient(145deg,${s.color}44,${s.color}22)`:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-                color:form.svcId===id?s.color:DIM,boxShadow:SO,
-              }}>{s.name}</button>
-            ))}
-          </div>
-        </div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={onClose} style={{flex:1,padding:"13px",borderRadius:14,border:"none",cursor:"pointer",background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,color:DIM,fontSize:13,fontWeight:700,boxShadow:SO}}>Скасувати</button>
-          <button onClick={()=>valid&&onSave(form)} style={{
-            flex:2,padding:"13px",borderRadius:14,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,
-            background:valid?"linear-gradient(165deg,#c084fc,#7c3aed)":`linear-gradient(145deg,${SURF_HI},${SURFACE})`,
-            color:valid?"#fff":FAINT,
-            boxShadow:valid?"0 4px 14px rgba(192,132,252,0.4)":SO,
-          }}>Додати до черги</button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── QUEUE OFFER MODAL ──────────────────────────────────────────
 function QueueOfferModal({ cancelledBk, waiting, queueMode, onInvite, onClose, svcsMap }) {
@@ -332,7 +272,6 @@ textarea{color-scheme:dark}
   // ── ЧЕРГА ──────────────────────────────────────────────────────
   const [queue,        setQueue]        = useState([]);
   const [queueOpen,    setQueueOpen]    = useState(true);
-  const [addQueueOpen, setAddQueueOpen] = useState(false);
   const [queueOffer,   setQueueOffer]   = useState(null);
   const [search,       setSearch]       = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -380,9 +319,6 @@ textarea{color-scheme:dark}
     }, () => {});
   }, []);
 
-  const addToQueue = (form) => {
-    push(ref(db, "queue"), { ...form, addedAt: Date.now(), status: "waiting" });
-  };
   const removeFromQueue = (item) => {
     if (typeof item === "string") { remove(ref(db, `queue/${item}`)); return; }
     if (item._nested) remove(ref(db, `queue/${item._slotKey}/entries/${item._uid}`));
@@ -468,26 +404,18 @@ textarea{color-scheme:dark}
                 <div style={{textAlign:"center",padding:"22px 0 12px",color:FAINT}}>
                   <div style={{fontSize:30,marginBottom:6}}>⏳</div>
                   <div style={{fontSize:14,fontWeight:700,color:DIM}}>Черга порожня</div>
-                  <div style={{fontSize:12,marginTop:4}}>Додайте учнів кнопкою нижче</div>
+                  <div style={{fontSize:12,marginTop:4}}>Учні стають у чергу самі в застосунку</div>
                 </div>
               ) : activeQueue.map((q,i)=>(
                 <QCard key={q.id} q={q} pos={i+1} now={now} svc={(svcsMap||SERVICES)[q.svcId]||{}}
                   onInvite={()=>markOffered(q)} onRemove={()=>removeFromQueue(q)}/>
               ))}
-              <Btn variant="primary" accent={PURPLE} onClick={()=>setAddQueueOpen(true)} style={{width:"100%"}}>
-                <div className="icon3d" style={{width:26,height:26,background:`${PURPLE}33`,borderRadius:8}}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" style={{position:"relative",zIndex:1}}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </div>
-                Додати до черги
-              </Btn>
             </div>
           )}
         </div>
 
       </div>
 
-      {/* ADD TO QUEUE MODAL */}
-      {addQueueOpen && <AddToQueueModal onSave={form=>{addToQueue(form);setAddQueueOpen(false);}} onClose={()=>setAddQueueOpen(false)} svcs={svcsMap}/>}
 
       {/* QUEUE OFFER MODAL */}
       {queueOffer && (

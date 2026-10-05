@@ -357,6 +357,10 @@ const getDayInfo = (offsetFromToday) => {
 // Винесена окремо, щоб рахувати суму для об'єднаних (сусідніх) записів.
 const computeBookingPrice = (b, servicesList) => {
   if (b.manualPrice != null) return b.manualPrice;
+  // Ціна, записана в слот при бронюванні (клієнт: тариф + надбавка − знижка/індив. ціна) —
+  // джерело істини, поки тривалість не змінилась після запису.
+  const _hrs = b.durationHours != null ? b.durationHours : b.durMin / 60;
+  if (typeof b.price === "number" && b.price > 0 && Math.round(_hrs * 60) === b.durMin) return b.price;
   // Індивідуальна фікс. ціна учня (₴/год у картці учня) — виставляється
   // адміном вручну і діє на всі уроки цього учня замість тарифу послуги;
   // знижка при цьому не застосовується (ціна вже персональна).
@@ -4082,7 +4086,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
       />
     )}
 
-    <BookingModal booking={localSelectedBooking} onClose={()=>setLocalSelectedBooking(null)}
+    <BookingModal booking={localSelectedBooking ? (bookings.find(x=>x.id===localSelectedBooking.id) || localSelectedBooking) : null} onClose={()=>setLocalSelectedBooking(null)}
       onAction={handleAction} settings={settings} bookings={bookings} onViewStudent={onViewStudent}
       autoTag={localSelectedBooking ? getAutoTag(localSelectedBooking) : null}
       mergeInfo={(() => {
@@ -5258,7 +5262,10 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
   const saveEdit = () => {
     const p = Math.max(0, parseInt(draftPrice, 10) || 0);
     const d = Math.min(maxDurMin, Math.max(15, parseInt(draftDur, 10) || booking.durMin));
-    onAction("editBooking", { ...booking, manualPrice: p, durMin: d, durationHours: d / 60 });
+    // Ручну ціну фіксуємо лише якщо інструктор справді змінив суму; збіглася з розрахунковою (тариф, надбавка, знижка) — лишаємо авто,
+    // щоб ціна далі сама відстежувала знижку/зміну тарифу.
+    const autoP = computeBookingPrice({ ...booking, manualPrice: null, durMin: d }, settings.services);
+    onAction("editBooking", { ...booking, manualPrice: (p === autoP && d === booking.durMin) ? null : p, durMin: d, durationHours: d / 60 });
     setEditOpen(false);
   };
 
@@ -5352,6 +5359,37 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
             )}
           </div>
 
+          {/* Action buttons */}
+          <div style={{padding:"10px 10px 4px",display:"flex",gap:8}}>
+            <button onClick={() => onAction("call", booking)} style={{
+              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
+              background:"rgba(52,211,153,0.12)",color:"#34d399",fontSize:13,fontWeight:800,
+            }}>{IcoPhone} Дзвонити</button>
+            {booking.status === "pending" && <button onClick={() => { onAction("confirm", booking); _close(); }} style={{
+              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
+              background:"rgba(158,224,122,0.15)",color:"#5fb83d",fontSize:13,fontWeight:800,
+            }}>✓ Підтвердити</button>}
+            <button onClick={() => onAction("chat", booking)} style={{
+              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
+              background:ink(0.1),color:BLUE,fontSize:13,fontWeight:800,
+            }}>{IcoChat} Чат</button>
+          </div>
+          <div style={{padding:"0 10px 4px",display:"flex",gap:8}}>
+            <button onClick={() => onViewStudent?.(booking.userId, false)} style={{
+              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
+              background:`${PURPLE}1f`,color:PURPLE,fontSize:13,fontWeight:800,
+            }}>{IcoProfile} Профіль</button>
+            <button onClick={() => onViewStudent?.(booking.userId, true)} style={{
+              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
+              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
+              background:`${GOLD}1f`,color:GOLD,fontSize:13,fontWeight:800,
+            }}>{IcoHistory} Історія</button>
+          </div>
+
           {/* Ціна/час — синя колірна картка (редагувати + дата/час/ціна разом) */}
           {booking.studentNote && (
             <div style={{
@@ -5425,48 +5463,6 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
             </div>
           </div>
 
-          {/* Маневри — фіолетова колірна картка */}
-          <div style={{
-            margin:"12px 14px 0",padding:"12px 14px",borderRadius:16,
-            background:`linear-gradient(155deg,color-mix(in srgb,${PURPLE} 40%,${BG_DEEP}) 0%,${BG_DEEP} 100%)`,
-            border:`1px solid color-mix(in srgb,${PURPLE} 38%,transparent)`,
-          }}>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"rgba(255,255,255,.7)",textTransform:"uppercase",marginBottom:8}}>
-              🚗 Маневри
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
-              {[
-                { key:"rozvorot",   label:"Розворот" },
-                { key:"parking90",  label:"Паркування 90" },
-                { key:"parking45",  label:"Паркування 45" },
-              ].map(m => {
-                const active = !!maneuverState[m.key];
-                const count = maneuverCounts[m.key] || 0;
-                return (
-                  <button key={m.key} onClick={() => toggleManeuver(m.key)} disabled={active} style={{
-                    position:"relative", fontFamily:"inherit",
-                    background: active ? `linear-gradient(155deg,${PURPLE},color-mix(in srgb,${PURPLE} 55%,#000))` : "rgba(0,0,0,0.22)",
-                    border:`1.5px solid ${active ? PURPLE : "rgba(255,255,255,0.15)"}`,
-                    borderRadius:12, padding:"10px 4px",
-                    textAlign:"center", fontSize:10.5, fontWeight:700,
-                    color: "#fff",
-                    cursor: active ? "default" : "pointer",
-                    boxShadow: active ? `0 3px 12px ${PURPLE}66` : "none",
-                  }}>
-                    {m.label}
-                    <div style={{
-                      position:"absolute", top:-7, right:-6,
-                      background:GOLD, color:"#1a1200", fontSize:9, fontWeight:900,
-                      width:18, height:18, borderRadius:"50%",
-                      display:"flex", alignItems:"center", justifyContent:"center",
-                      border:`2px solid ${BG_DEEP}`,
-                    }}>{count}</div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Мітка — booking.tag/tagManual, якщо ручна; інакше показуємо автотег
               (за порядком уроку/сумою боргу), рахований у батьківському компоненті. */}
           {(() => {
@@ -5536,9 +5532,58 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
                     ))}
                   </div>
                 )}
+                <div style={{marginTop:8,fontSize:10.5,lineHeight:1.4,color:"rgba(255,255,255,.55)"}}>
+                  Позначка на картці запису в розкладі (1-й урок, іспит, борг тощо). Перший урок ставиться автоматично, решту — вручну («Змінити»).
+                </div>
               </div>
             );
           })()}
+
+          {/* Маневри — фіолетова колірна картка */}
+          <div style={{
+            margin:"12px 14px 0",padding:"12px 14px",borderRadius:16,
+            background:`linear-gradient(155deg,color-mix(in srgb,${PURPLE} 40%,${BG_DEEP}) 0%,${BG_DEEP} 100%)`,
+            border:`1px solid color-mix(in srgb,${PURPLE} 38%,transparent)`,
+          }}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"rgba(255,255,255,.7)",textTransform:"uppercase",marginBottom:8}}>
+              🚗 Маневри
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8}}>
+              {[
+                { key:"rozvorot",   label:"Розворот" },
+                { key:"parking90",  label:"Паркування 90" },
+                { key:"parking45",  label:"Паркування 45" },
+              ].map(m => {
+                const active = !!maneuverState[m.key];
+                const count = maneuverCounts[m.key] || 0;
+                return (
+                  <button key={m.key} onClick={() => toggleManeuver(m.key)} disabled={active} style={{
+                    position:"relative", fontFamily:"inherit",
+                    background: active ? `linear-gradient(155deg,${PURPLE},color-mix(in srgb,${PURPLE} 55%,#000))` : "rgba(0,0,0,0.22)",
+                    border:`1.5px solid ${active ? PURPLE : "rgba(255,255,255,0.15)"}`,
+                    borderRadius:12, padding:"10px 4px",
+                    textAlign:"center", fontSize:10.5, fontWeight:700,
+                    color: "#fff",
+                    cursor: active ? "default" : "pointer",
+                    boxShadow: active ? `0 3px 12px ${PURPLE}66` : "none",
+                  }}>
+                    {m.label}
+                    <div style={{
+                      position:"absolute", top:-7, right:-6,
+                      background:GOLD, color:"#1a1200", fontSize:9, fontWeight:900,
+                      width:18, height:18, borderRadius:"50%",
+                      display:"flex", alignItems:"center", justifyContent:"center",
+                      border:`2px solid ${BG_DEEP}`,
+                    }}>{count}</div>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{marginTop:8,fontSize:10.5,lineHeight:1.4,color:"rgba(255,255,255,.55)"}}>
+              Тап по маневру — відмітити, що його відпрацювали на цьому уроці. Золотий кружок — скільки разів учень відпрацював його за весь час. ✓ / ✕ — вдало чи невдало (тап — змінити).
+            </div>
+          </div>
+
 
           {/* Queue */}
           {queueEntries.length > 0 && (
@@ -5576,37 +5621,6 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
               ))}
             </div>
           )}
-
-          {/* Action buttons */}
-          <div style={{padding:"10px 10px 4px",display:"flex",gap:8}}>
-            <button onClick={() => onAction("call", booking)} style={{
-              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
-              background:"rgba(52,211,153,0.12)",color:"#34d399",fontSize:13,fontWeight:800,
-            }}>{IcoPhone} Дзвонити</button>
-            {booking.status === "pending" && <button onClick={() => { onAction("confirm", booking); _close(); }} style={{
-              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
-              background:"rgba(158,224,122,0.15)",color:"#5fb83d",fontSize:13,fontWeight:800,
-            }}>✓ Підтвердити</button>}
-            <button onClick={() => onAction("chat", booking)} style={{
-              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
-              background:ink(0.1),color:BLUE,fontSize:13,fontWeight:800,
-            }}>{IcoChat} Чат</button>
-          </div>
-          <div style={{padding:"0 10px 4px",display:"flex",gap:8}}>
-            <button onClick={() => onViewStudent?.(booking.userId, false)} style={{
-              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
-              background:`${PURPLE}1f`,color:PURPLE,fontSize:13,fontWeight:800,
-            }}>{IcoProfile} Профіль</button>
-            <button onClick={() => onViewStudent?.(booking.userId, true)} style={{
-              flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-              padding:"11px",borderRadius:14,border:"none",cursor:"pointer",fontFamily:"inherit",
-              background:`${GOLD}1f`,color:GOLD,fontSize:13,fontWeight:800,
-            }}>{IcoHistory} Історія</button>
-          </div>
 
           {/* Cancel link */}
           {isPastLocked ? (
@@ -6955,7 +6969,7 @@ export default function App() {
           hoursDone: raw.hours || raw.hoursDone || 0,
           categoryId: raw.categoryId || null,
           isVipOnly:  raw.isVipOnly || false,
-          discount: usersMapRef.current[uid]?.discount || 0,
+          discount: usersMapRef.current[uid]?.discount || raw.discountAmt || 0,
           customPrice: usersMapRef.current[uid]?.customPrice ?? null,
         });
       });
@@ -7201,7 +7215,7 @@ export default function App() {
         </div>
 
         {/* MODALS */}
-        <BookingModal booking={selectedBooking} onClose={()=>setSelectedBooking(null)}
+        <BookingModal booking={selectedBooking ? (bookings.find(x=>x.id===selectedBooking.id) || selectedBooking) : null} onClose={()=>setSelectedBooking(null)}
           onAction={handleAction} settings={settings}
           autoTag={selectedBooking ? getAutoTag(selectedBooking) : null}/>
         <NewBookingModal data={newBookingData} onClose={()=>setNewBookingData(null)}
