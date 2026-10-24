@@ -8,7 +8,11 @@ on:
   workflow_dispatch: {}
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   deploy:
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +31,13 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy to Firebase Hosting, Database Rules and Functions
+      - name: Deploy to Firebase Hosting and Functions
+        # Правила бази (database) тут НЕ деплояться: вони залежать від нових функцій і нових
+        # клієнтів (bookedBy, queue_counts), тому виходять ОКРЕМО і останніми — вручну через
+        # workflow «Deploy Database Rules» (Actions → Run workflow), коли клієнти вже оновились.
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/firebase-sa.json
         run: |
           printf '%s' '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > "$GOOGLE_APPLICATION_CREDENTIALS"
-          npx firebase-tools deploy --only hosting:admin,database,functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive --force
+          npx firebase-tools deploy --only hosting:admin,functions --project ${{ secrets.FIREBASE_PROJECT_ID }} --non-interactive --force
           rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
