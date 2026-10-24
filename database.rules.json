@@ -32,7 +32,7 @@
       ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       "$date": {
         "$slotId": {
-          ".write": "auth != null && (auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || ((data.exists() || (newData.child('available').val() === false && newData.child('phantom').val() === true)) && (newData.exists() || data.child('phantom').val() === true) && (!data.child('reservedFor').exists() || data.child('reservedFor').val() === auth.uid || data.child('reservedUntil').val() < now) && (newData.child('reservedFor').val() === data.child('reservedFor').val() || (data.child('reservedFor').val() === auth.uid && !newData.child('reservedFor').exists())) && (newData.child('reservedUntil').val() === data.child('reservedUntil').val() || (data.child('reservedFor').val() === auth.uid && !newData.child('reservedUntil').exists()))))",
+          ".write": "auth != null && (auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || ((data.exists() || (newData.child('available').val() === false && newData.child('phantom').val() === true)) && (newData.exists() || data.child('phantom').val() === true) && (data.child('available').val() !== false || data.child('bookedBy').val() === auth.uid) && (!newData.exists() || (newData.child('available').val() === false ? newData.child('bookedBy').val() === auth.uid : !newData.child('bookedBy').exists())) && (!data.child('reservedFor').exists() || data.child('reservedFor').val() === auth.uid || data.child('reservedUntil').val() < now) && (newData.child('reservedFor').val() === data.child('reservedFor').val() || (data.child('reservedFor').val() === auth.uid && !newData.child('reservedFor').exists())) && (newData.child('reservedUntil').val() === data.child('reservedUntil').val() || (data.child('reservedFor').val() === auth.uid && !newData.child('reservedUntil').exists()))))",
           "viewing": {
             "$uid": {
               ".write": "auth != null && auth.uid === $uid"
@@ -78,6 +78,9 @@
           },
           "bookingStart": {
             ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.isBoolean()"
+          },
+          "bookedBy": {
+            ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || newData.val() === auth.uid"
           }
         }
       }
@@ -117,7 +120,7 @@
       ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       "$slotKey": {
         "entries": {
-          ".read": "auth != null",
+          ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
           "$uid": {
             ".write": "auth != null && (auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || (auth.uid === $uid && (!newData.exists() || root.child('users/'+$uid+'/blocked').val() !== true)))",
             "uid": {
@@ -134,10 +137,16 @@
             },
             "phone": {
               ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || (newData.isString() && newData.val().length <= 30)"
-            }
+            },
+            ".read": "auth != null && auth.uid === $uid"
           }
         }
-      }
+      },
+      ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
+    },
+    "queue_counts": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
     },
     "userQueue": {
       "$uid": {
@@ -221,7 +230,7 @@
     "bookings_by_phone": {
       ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       "$phone": {
-        ".read": "auth != null",
+        ".read": "auth != null && ('+'+$phone) === root.child('users/'+auth.uid+'/profile/phone').val()",
         ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
       }
     },

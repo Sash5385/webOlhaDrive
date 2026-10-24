@@ -31,20 +31,21 @@ OlhaDrive — SaaS-платформа онлайн-записи для инст�
 
 ## Frontend
 
-- Next.js (App Router)
-- TypeScript
+- Vite
 - React
-- Tailwind CSS
+- JavaScript (JSX, без TypeScript)
+- PWA (vite-plugin-pwa)
 
 ## Backend
 
-- Supabase
-- PostgreSQL
-- Row Level Security (RLS)
+- Firebase Realtime Database
+- Firebase Auth
+- Cloud Functions (`functions/`, лише в адмін-репозиторіях)
+- Правила доступу: `database.rules.json` (лише в адмін-репозиторіях)
 
 ## Deploy
 
-- Vercel
+- Firebase Hosting через GitHub Actions (`.github/workflows/deploy.yml`)
 
 ---
 
@@ -94,28 +95,12 @@ OlhaDrive — SaaS-платформа онлайн-записи для инст�
 
 # Работа с кодом
 
-## TypeScript
+## JavaScript
 
-Всегда:
+Код на JS (JSX), TypeScript не используется — не добавлять `.ts`/`.tsx` без запроса.
 
-- строгая типизация;
-- избегать any;
-- использовать интерфейсы и типы.
-
-Плохо:
-
-```ts
-const user: any
-```
-
-Хорошо:
-
-```ts
-interface User {
-  id: string
-  name: string
-}
-```
+- явно проверять `null`/`undefined` для данных из БД;
+- коментарі в коді — українською, як у решті коду.
 
 ---
 
@@ -134,15 +119,11 @@ interface User {
 
 ---
 
-## Next.js
+## Vite
 
-Предпочитать:
-
-- Server Components;
-- Server Actions;
-- кеширование там, где возможно.
-
-Не добавлять клиентские компоненты без необходимости.
+- `npm run build` — обов'язкова перевірка після змін;
+- lazy-імпорти чанків + обробник `vite:preloadError` у `src/main.jsx` — не прибирати;
+- `/version.json` і service worker — механізм оновлення застарілих вкладок, не ламати.
 
 ---
 
@@ -176,7 +157,7 @@ interface User {
 
 ---
 
-# Работа с Supabase
+# Работа с Firebase
 
 ## Запрещено
 
@@ -198,7 +179,7 @@ interface User {
 
 Проверять:
 
-- RLS политики;
+- правила `database.rules.json`;
 - права доступа;
 - авторизацию.
 
