@@ -262,6 +262,10 @@
     "invites": {
       ".read": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
       ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
+    },
+    "license": {
+      ".read": "auth != null",
+      ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'"
     }
   }
 }

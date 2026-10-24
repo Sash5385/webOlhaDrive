@@ -1,11 +1,13 @@
 import React, { useState, useEffect, lazy, Suspense, createContext, useContext } from "react";
 import { useAppUpdate } from "./hooks/useAppUpdate"
+import { useLicense, isLicenseBlocked } from "./hooks/useLicense"
 import { APP_VERSION } from "./version.js";
 import { ref, onValue, update, push, remove, get } from "firebase/database";
 import { db, registerAdminFCM, onAdminForegroundMessage } from "./firebase";
 import { useAdminAuth, LoginScreen } from "./AdminAuth";
 import { setGlobalLang, createT } from "./lang";
 import { ThemeContext, getTheme } from "./theme.js";
+import { FOG_STYLE } from "./uiStyles";
 import { useMosaicSwitch, MosaicOverlay } from "./mosaic";
 
 export const LangContext = createContext('uk');
@@ -223,7 +225,7 @@ function BottomNav({ active, onChange, settings, chatUnread, journalUnread }) {
   return (
     <div id="app-bottomnav" style={{
       flexShrink:0,
-      padding:"0 3px 10px",
+      padding:`0 3px calc(10px + env(safe-area-inset-bottom, 0px))`,
       background: isKava ? "#d4ba96" : "transparent",
       zIndex:50,
       pointerEvents:"none",
@@ -446,7 +448,7 @@ const INITIAL_BOOKINGS = [];
 const DEFAULT_SETTINGS = {
   profile: { name:"Олександр", phone:"+380989225442", address:"Київ", experience:8, photo:null },
   workStart:7, workEnd:20, weekends:[6], daysShown:6, snapMin:30, slotCreateStep:30, hourHeightPx:60, autoHourHeight:false,
-  lunchEnabled:true, lunchStart:12, lunchEnd:13, customBlocks:[], pendingEnabled:false, lockPastBookings:false,
+  lunchEnabled:true, lunchStart:12, lunchEnd:13, customBlocks:[], pendingEnabled:false, lockPastBookings:false, uiFog:false,
   theme:"dark", language:"uk", queueAutoFifo:true, queueBroadcast:false, queueManual:false,
   studentCanReschedule:true, studentCanCancel:true, bookCutoffHours:2, minChangeHours:24, calendarOpenDays:30, schoolCalendarOpenDays:14, slotGenDays:30,
   stickyTime:"both", notifLocation:"topbar", showCompleteBtn:true, showSlotTimes:true, autoStudentColors:true,
@@ -502,7 +504,25 @@ function dayIdxToDate(dayIdx) {
 }
 
 // ─── MAIN APP ────────────────────────────────────────────────────
+function LicenseLockedScreen({ theme }) {
+  return (
+    <div style={{
+      minHeight:"100dvh", background:theme.BG_DEEP, display:"flex",
+      alignItems:"center", justifyContent:"center", padding:20,
+    }}>
+      <div style={{ maxWidth:340, textAlign:"center", color:theme.TEXT }}>
+        <div style={{ fontSize:40, marginBottom:12 }}>🔒</div>
+        <div style={{ fontSize:18, fontWeight:800, marginBottom:8 }}>Доступ призупинено</div>
+        <div style={{ fontSize:14, color:theme.DIM, lineHeight:1.5 }}>
+          Підписку призупинено або закінчився пробний період. Зв'яжіться з адміністратором OlhaDrive для продовження доступу.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const license = useLicense();
   const adminUser = useAdminAuth();
   // Deep-link з push-сповіщення (?date=&time=&uid=&bookingId=) — одразу відкриваємо розклад на потрібній даті
   const [jumpTarget, setJumpTarget] = useState(() => {
@@ -735,10 +755,85 @@ export default function App() {
         minBookingIntervalDays: settings.minBookingIntervalDays ?? 0,
         slotFreedPushEnabled: settings.slotFreedPushEnabled ?? true,
         lockPastBookings: settings.lockPastBookings ?? false,
+        uiFog:           settings.uiFog           ?? false,
       }).catch(() => {});
     }, 800);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings, adminUser, settingsLoaded]);
+
+  // Network version check — bypasses SW cache. On mismatch, fully reset the
+  // service worker + caches so a stuck client can never get wedged on old code.
+  useEffect(() => {
+    const hardReset = async () => {
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r => r.unregister()));
+        }
+        if (window.caches) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+      } catch { /* ігноруємо */ }
+      window.location.reload();
+    };
+    const check = async () => {
+      try {
+        const res = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' });
+        const { version } = await res.json();
+        if (version && version !== APP_VERSION) {
+          const flag = 'vreset_' + version;
+          if (sessionStorage.getItem(flag)) return; // guard against reload loops
+          sessionStorage.setItem(flag, '1');
+          hardReset();
+        }
+      } catch { /* ігноруємо */ }
+    };
+    const t0 = setTimeout(check, 10 * 1000);
+    const id = setInterval(check, 60 * 1000);
+    return () => { clearTimeout(t0); clearInterval(id); };
+  }, []);
+
+  const processBookingsSnap = React.useCallback((data) => {
+    if (!data) return;
+    const all = [];
+    Object.entries(data).forEach(([uid, userBkgs]) => {
+      if (!userBkgs || typeof userBkgs !== 'object') return;
+      Object.entries(userBkgs).forEach(([key, b]) => {
+        if (b.status === 'cancelled') return;
+        all.push({
+          ...b,
+          id:        b.id || key,
+          _fbKey:    key,
+          userId:    uid,
+          day:       dateToDayIdx(b.date),
+          startMin:  b.startMin ?? (parseInt((b.time||"0:0").split(":")[0])*60 + parseInt((b.time||"0:0").split(":")[1])),
+          durMin:    b.durMin   ?? (b.durationHours ? b.durationHours*60 : 60),
+          name:      b.studentName || b.name || "Без імені",
+          type:      b.serviceType || b.type || "private",
+        });
+      });
+    });
+    const allIds = new Set(all.map(fb => fb.id));
+    setBookings(prev => {
+      const prevMap = new Map(prev.map(b => [b.id, b]));
+      return all
+        .filter(fb => !pendingDeletesRef.current.has(fb.id))
+        .map(fb =>
+          (moveSaveTimers.current[fb.id] || activeDragIds.current.has(fb.id))
+            ? (prevMap.get(fb.id) || fb)
+            : fb
+        )
+        .concat(
+          prev.filter(b =>
+            !allIds.has(b.id) &&
+            !pendingDeletesRef.current.has(b.id) &&
+            b.status !== 'cancelled' &&
+            (moveSaveTimers.current[b.id] || activeDragIds.current.has(b.id))
+          )
+        );
+    });
+  }, []);
 
   // Load bookings from Firebase
   useEffect(() => {
@@ -749,6 +844,7 @@ export default function App() {
     }
     return onValue(ref(db, "bookings"), snap => {
       const data = snap.val();
+      processBookingsSnap(data);
       const readAt = parseInt(localStorage.getItem("journal_read_at") || "0", 10);
       if (readAt && data) {
         let cnt = 0;
@@ -760,46 +856,8 @@ export default function App() {
         }); });
         setJournalUnreadBookings(cnt);
       }
-      if (!data) return;
-      const all = [];
-      Object.entries(data).forEach(([uid, userBkgs]) => {
-        Object.entries(userBkgs).forEach(([key, b]) => {
-          if (b.status === 'cancelled') return;
-          all.push({
-            ...b,
-            id:        b.id || key,   // стабільний fallback — ключ вузла Firebase
-            _fbKey:    key,           // реальний ключ вузла для запису в Firebase
-            userId:    uid,
-            day:       dateToDayIdx(b.date),
-            startMin:  b.startMin ?? (parseInt((b.time||"0:0").split(":")[0])*60 + parseInt((b.time||"0:0").split(":")[1])),
-            durMin:    b.durMin   ?? (b.durationHours ? b.durationHours*60 : 60),
-            name:      b.studentName || b.name || "Без імені",
-            type:      b.serviceType || b.type || "private",
-          });
-        });
-      });
-
-      const allIds = new Set(all.map(fb => fb.id));
-      setBookings(prev => {
-        const prevMap = new Map(prev.map(b => [b.id, b]));
-        return all
-          .filter(fb => !pendingDeletesRef.current.has(fb.id))
-          .map(fb =>
-            (moveSaveTimers.current[fb.id] || activeDragIds.current.has(fb.id))
-              ? (prevMap.get(fb.id) || fb)
-              : fb
-          )
-          .concat(
-            prev.filter(b =>
-              !allIds.has(b.id) &&
-              !pendingDeletesRef.current.has(b.id) &&
-              b.status !== 'cancelled' &&
-              (moveSaveTimers.current[b.id] || activeDragIds.current.has(b.id))
-            )
-          );
-      });
     });
-  }, [adminUser]);
+  }, [adminUser, processBookingsSnap]);
 
   // Нові реєстрації учнів — окремий лічильник бейджа "Журнал", щоб адмін
   // одразу бачив, коли прийшла нова людина (не поточний учень, а саме
@@ -1073,18 +1131,22 @@ const pendingDeletesRef = React.useRef(new Set());
   const lang = settings.language || 'uk';
   useEffect(() => { setGlobalLang(lang); }, [lang]);
 
-  const theme = getTheme(settings.theme);
+  // «Туман» — глобальний скляний стиль (лише темна тема; у OlhaDrive за замовчуванням вимкнено); вимикач у Налаштування → Графік (settings.uiFog)
+  const fogOn = settings.uiFog === true && settings.theme !== "light";
+  const theme = fogOn ? FOG_STYLE.theme : getTheme(settings.theme);
   const css = makeCSS(theme);
 
   if (adminUser === undefined) return null;
   if (adminUser === null) return <LoginScreen/>;
+  if (isLicenseBlocked(license)) return <LicenseLockedScreen theme={theme}/>;
 
   return (
     <ThemeContext.Provider value={theme}>
     <LangContext.Provider value={lang}>
     <>
       <style>{css}</style>
-      {!theme.BG_IMAGE && (
+      {fogOn && <div style={{position:"fixed", inset:0, zIndex:0, pointerEvents:"none", background:FOG_STYLE.wrap}}/>}
+      {!fogOn && !theme.BG_IMAGE && (
         <div style={{
           position:"fixed", inset:0, zIndex:0, pointerEvents:"none",
           background:

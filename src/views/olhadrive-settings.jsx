@@ -1,12 +1,13 @@
 import { useState, useContext, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { ref, onValue, off, update, remove } from "firebase/database";
+import { ref, get, onValue, off, update, remove } from "firebase/database";
 import { db } from "../firebase";
 import { LangContext } from "../App";
 import { APP_VERSION } from "../version.js";
 import { ThemeContext } from "../theme.js";
 import { UICss, useFX } from "../ui";
 import { createT } from "../lang";
+import { useLicense } from "../hooks/useLicense";
 import { useMosaicSwitch, MosaicOverlay } from "../mosaic";
 
 const DAY_NAMES = ["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
@@ -66,9 +67,15 @@ function Toggle({ on, onChange, color }) {
 }
 
 function SmallToggle({ on, onChange, color }) {
-  const { ACC_HI, ACCENT, SURF_LO, BG_DEEP, SI } = useContext(ThemeContext);
+  const { ACCENT, SURF_LO, BG_DEEP, SI, FOG, SURF_HI, BORDER, DIM, BTN_GRAD } = useContext(ThemeContext);
   const { shade } = useFX();
   const c = color || ACCENT;
+  if (FOG) return (
+    <div onClick={()=>onChange(!on)} style={{width:38,height:22,borderRadius:99,cursor:"pointer",position:"relative",flexShrink:0,transition:"background .2s",
+      background:on?(BTN_GRAD||ACCENT):SURF_HI,border:`1px solid ${on?"transparent":BORDER}`}}>
+      <div style={{position:"absolute",top:2,left:on?18:2,width:16,height:16,borderRadius:"50%",background:on?"#fff":DIM,transition:"left .2s"}}/>
+    </div>
+  );
   return (
     <div onClick={()=>onChange(!on)} style={{
       width:32,height:18,borderRadius:9,cursor:"pointer",position:"relative",
@@ -84,9 +91,19 @@ function SmallToggle({ on, onChange, color }) {
   );
 }
 
-function NumInput({ value, onChange, min=0, max=999, suffix="", step=1, compact }) {
-  const { BG_DEEP, SURF_HI, SURFACE, TEXT, SO, SI } = useContext(ThemeContext);
+export function NumInput({ value, onChange, min=0, max=999, suffix="", step=1, compact }) {
+  const { BG_DEEP, SURF_HI, SURFACE, TEXT, SO, SI, FOG, ACC_HI } = useContext(ThemeContext);
   const bs = compact ? 22 : 26;
+  if (FOG) {
+    const fb = { width:36,height:36,border:"none",cursor:"pointer",background:"transparent",color:ACC_HI,fontSize:18,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,padding:0 };
+    return (
+      <div style={{display:"flex",alignItems:"center",background:SURF_HI,borderRadius:12}}>
+        <button onClick={()=>onChange(Math.max(min,value-step))} style={fb}>−</button>
+        <span style={{fontSize:14,fontWeight:700,color:TEXT,minWidth:54,textAlign:"center"}}>{value}{suffix}</span>
+        <button onClick={()=>onChange(Math.min(max,value+step))} style={fb}>+</button>
+      </div>
+    );
+  }
   return (
     <div style={{display:"flex",alignItems:"center",gap:4,background:BG_DEEP,borderRadius:9,boxShadow:SI,padding: compact ? "3px 5px" : "4px 6px"}}>
       <button onClick={()=>onChange(Math.max(min,value-step))} style={{
@@ -120,8 +137,17 @@ function Radio({ on, onChange }) {
 }
 
 function Row({ label, hint, children, last, color, compact }) {
-  const { BG_DEEP, ACCENT } = useContext(ThemeContext);
+  const { BG_DEEP, ACCENT, FOG, TEXT, DIM } = useContext(ThemeContext);
   const c = color || ACCENT;
+  if (FOG) return (
+    <div className="fog-row" style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,minHeight:56,padding:"9px 0"}}>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:14,fontWeight:600,color:TEXT}}>{label}</div>
+        {hint && <div style={{fontSize:11.5,color:DIM,marginTop:2,lineHeight:1.35}}>{hint}</div>}
+      </div>
+      <div style={{flexShrink:0}}>{children}</div>
+    </div>
+  );
   return (
     <div style={{
       display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,
@@ -133,7 +159,7 @@ function Row({ label, hint, children, last, color, compact }) {
     }}>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontSize:compact?12:13,fontWeight:700,color:"#fff"}}>{label}</div>
-        {hint && <div style={{fontSize:compact?9:10,color:"rgba(255,255,255,0.6)",marginTop:compact?1:2,lineHeight:1.35}}>{hint}</div>}
+        {hint && <div style={{fontSize:compact?9:10,color:"rgba(255,255,255,0.74)",marginTop:compact?1:2,lineHeight:1.35}}>{hint}</div>}
       </div>
       <div style={{flexShrink:0}}>{children}</div>
     </div>
@@ -141,7 +167,11 @@ function Row({ label, hint, children, last, color, compact }) {
 }
 
 function Chip({ label, active, onClick }) {
-  const { ACC_HI, ACCENT, SURF_HI, SURFACE, DIM, SO } = useContext(ThemeContext);
+  const { ACC_HI, ACCENT, SURF_HI, SURFACE, DIM, SO, FOG, BORDER, BTN_TX } = useContext(ThemeContext);
+  if (FOG) return (
+    <button onClick={onClick} style={{flex:"1 1 auto",padding:"9px 13px",borderRadius:99,cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",
+      border:`1px solid ${active?"transparent":BORDER}`,background:active?`linear-gradient(145deg,${ACC_HI},${ACCENT})`:SURFACE,color:active?BTN_TX:DIM}}>{label}</button>
+  );
   return (
     <button onClick={onClick} style={{
       padding:"6px 12px",borderRadius:9,border:"none",cursor:"pointer",fontSize:11,fontWeight:700,
@@ -161,39 +191,54 @@ function Info({ title, text, color }) {
       borderRadius:10,padding:"10px 12px",marginTop:2,marginBottom:10,
     }}>
       <div style={{fontSize:11,fontWeight:700,color:c,marginBottom:4}}>💡 {title}</div>
-      <div style={{fontSize:11,color:DIM,lineHeight:1.6}}>{text}</div>
+      <div style={{fontSize:11,color:DIM,lineHeight:1.6,whiteSpace:"pre-line"}}>{text}</div>
     </div>
   );
 }
 
 function TimeInput({ value, onChange, min=0, max=24, compact=false }) {
-  const { BG_DEEP, TEXT, FAINT, SI } = useContext(ThemeContext);
-  const v = Number(value) || 0;
-  const h = Math.floor(v);
-  const m = (v % 1 >= 0.5) ? 30 : 0;
-  const disp = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-  const dec = () => { const n = Math.round((v - 0.5) * 2) / 2; onChange(Math.max(min, n)); };
-  const inc = () => { const n = Math.round((v + 0.5) * 2) / 2; onChange(Math.min(max, n)); };
+  const { BG_DEEP, TEXT, FAINT, SI, FOG, SURF_HI } = useContext(ThemeContext);
+  const tm = Math.round((Number(value) || 0) * 60);        // хвилини від півночі — точність 1 хв
+  const minM = Math.round(min * 60), maxM = Math.round(max * 60);
+  const disp = `${String(Math.floor(tm / 60)).padStart(2,"0")}:${String(tm % 60).padStart(2,"0")}`;
+  const setM = (n) => onChange(Math.min(maxM, Math.max(minM, n)) / 60);
+  // Утримання ‹ › повторює крок із прискоренням: по одній хвилині тапати довго
+  const hold = useRef(null);
+  const stop = () => { clearTimeout(hold.current); hold.current = null; };
+  const start = (dir) => {
+    let cur = tm, n = 0;
+    const step = () => { cur = Math.min(maxM, Math.max(minM, cur + dir)); onChange(cur / 60); };
+    const loop = () => { step(); n++; hold.current = setTimeout(loop, n > 12 ? 40 : 120); };
+    step(); hold.current = setTimeout(loop, 400); // перший крок одразу, повтор — лише при утриманні
+  };
+  useEffect(() => stop, []);
   const bW = compact ? 14 : 32;
   const bH = compact ? 20 : 38;
   const fS = compact ? 11 : 22;
   const dW = compact ? 28 : 64;
   const dS = compact ? 9 : 18;
+  const btn = (dir, ch) => (
+    <button onPointerDown={e=>{ e.preventDefault(); start(dir); }} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}
+      style={{width:bW,height:bH,border:"none",cursor:"pointer",background:"transparent",color:FAINT,fontSize:fS,padding:0,lineHeight:1,touchAction:"none"}}>{ch}</button>
+  );
   return (
-    <div style={{display:"flex",alignItems:"center",background:BG_DEEP,borderRadius:7,boxShadow:SI,overflow:"hidden"}}>
-      <button onClick={dec} style={{width:bW,height:bH,border:"none",cursor:"pointer",background:"transparent",color:FAINT,fontSize:fS,padding:0,lineHeight:1}}>‹</button>
-      <span style={{fontSize:dS,fontWeight:700,color:TEXT,minWidth:dW,textAlign:"center"}}>{disp}</span>
-      <button onClick={inc} style={{width:bW,height:bH,border:"none",cursor:"pointer",background:"transparent",color:FAINT,fontSize:fS,padding:0,lineHeight:1}}>›</button>
+    <div style={{display:"flex",alignItems:"center",background:FOG?SURF_HI:BG_DEEP,borderRadius:FOG?12:7,boxShadow:FOG?"none":SI,overflow:"hidden"}}>
+      {btn(-1,"‹")}
+      <label style={{position:"relative",fontSize:dS,fontWeight:700,color:TEXT,minWidth:dW,textAlign:"center",cursor:"pointer",alignSelf:"stretch",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        {disp}
+        <input type="time" step={60} value={disp} onChange={e=>{ const [h,m] = String(e.target.value || "").split(":").map(Number); if (Number.isFinite(h) && Number.isFinite(m)) setM(h * 60 + m); }}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",opacity:0,cursor:"pointer"}}/>
+      </label>
+      {btn(1,"›")}
     </div>
   );
 }
 
 // ─── БАРАБАН ЧАСУ — крупний вибір часу прокруткою (scroll-snap) ──────────
-// Крок хвилин 30: календар (сітка, підписи, лінії) побудований на півгодинних
-// рядках, дробові 15/10/5 хв зламали б вирівнювання сітки.
+// Хвилини 00–59 (точність 1 хв): сітка розкладу вирівнюється по справжніх :00/:30, початок дня може бути будь-якою хвилиною.
 const WHEEL_ITEM = 40;
 const WHEEL_H = Array.from({length:25},(_,i)=>String(i).padStart(2,"0"));
-const WHEEL_M = ["00","30"];
+const WHEEL_M = Array.from({length:60},(_,i)=>String(i).padStart(2,"0"));
 
 function WheelCol({ items, index, onIndex, rows = 5, width = 48 }) {
   const { TEXT, FAINT } = useContext(ThemeContext);
@@ -249,13 +294,14 @@ function TimeWheel({ label, value, onChange, min = 0, max = 24, rows = 5, color 
   const { DIM, TEXT, GREEN, BG_DEEP } = useContext(ThemeContext);
   const c = color || GREEN;
   const v = Math.min(max, Math.max(min, Number(value) || 0));
-  const h = Math.floor(v);
-  const m = v % 1 >= 0.5 ? 1 : 0;
-  const set = (nh, nm) => onChange(Math.min(max, Math.max(min, nh + nm * 0.5)));
+  const tm = Math.round(v * 60);
+  const h = Math.floor(tm / 60);
+  const m = tm % 60;
+  const set = (nh, nm) => onChange(Math.min(max, Math.max(min, (nh * 60 + nm) / 60)));
   const pad = ((rows - 1) / 2) * WHEEL_ITEM;
   return (
     <div style={{textAlign:"center"}}>
-      <div style={{display:"inline-block",fontSize:11,fontWeight:800,letterSpacing:1.2,color:c,marginBottom:6,
+      <div style={{display:"inline-block",fontSize:11,fontWeight:800,letterSpacing:1.2,color:`color-mix(in srgb,${c} 60%,#fff)`,marginBottom:6,
         padding:"3px 12px",borderRadius:999,background:`color-mix(in srgb,${c} 14%,transparent)`}}>{label}</div>
       <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",gap:2,padding:"0 4px"}}>
         <div style={{position:"absolute",left:0,right:0,top:pad,height:WHEEL_ITEM,pointerEvents:"none",borderRadius:14,
@@ -453,6 +499,7 @@ select{color-scheme:${isKava?"light":"dark"}}
   const [active, setActive] = useState("schedule");
   const [showHint, setShowHint] = useState(false);
   const switchSection = (id) => { setActive(id); setShowHint(false); };
+  const license = useLicense();
 
   // ── відгуки учнів ────────────────────────────────────────────
   const [reviews, setReviews] = useState([]);
@@ -531,6 +578,117 @@ select{color-scheme:${isKava?"light":"dark"}}
     return () => ro.disconnect();
   }, [active]);
 
+  // Дістає date/startMin/durMin з сирого запису бронювання так само, як це
+  // робить основний рендер розкладу (processBookingsRef у ScheduleView) —
+  // клієнтські самозаписи мають лише time+durationHours, а не startMin/durMin
+  // напряму. БЕЗ цього фолбека будь-яка перевірка "чи покритий цей слот
+  // реальним записом" хибно вважає такі записи неіснуючими.
+  const deriveBooking = (raw) => {
+    if (!raw || !raw.date) return null;
+    let startMin = raw.startMin;
+    if (startMin == null && raw.time) {
+      const [hh, mm] = raw.time.split(":").map(Number);
+      if (!Number.isNaN(hh) && !Number.isNaN(mm)) startMin = hh * 60 + mm;
+    }
+    let durMin = raw.durMin;
+    if (!durMin) durMin = raw.durationHours ? raw.durationHours * 60 : (startMin != null ? 60 : null);
+    if (startMin == null || !durMin) return null;
+    return { date: raw.date, startMin, durMin };
+  };
+  const collectBookingsByDate = (bookingsRoot) => {
+    const bkByDate = {};
+    Object.values(bookingsRoot || {}).forEach(userBookings => {
+      Object.values(userBookings || {}).forEach(raw => {
+        if (!raw || raw.status === "cancelled") return;
+        const b = deriveBooking(raw);
+        if (!b) return;
+        (bkByDate[b.date] || (bkByDate[b.date] = [])).push(b);
+      });
+    });
+    return bkByDate;
+  };
+
+  // Одноразова ручна очистка "осиротілих" зайнятих слотів — timeslots-документи
+  // з available:false, що лишились у базі без жодного реального активного
+  // запису, що їх покриває (залишки після тестів перетягування слотів тощо).
+  // Навмисно блоковані (adminBlocked/vipOnly/surcharge) слоти не чіпаємо —
+  // це не артефакти, а свідомо виставлені стани.
+  const [cleaning, setCleaning] = useState(false);
+  const [cleanResult, setCleanResult] = useState(null);
+  const runCleanupOrphanedSlots = async () => {
+    if (!window.confirm("Видалити всі \"зайняті\" слоти в базі, які не належать жодному активному запису? Дію не можна скасувати.")) return;
+    setCleaning(true);
+    setCleanResult(null);
+    try {
+      const [timeslotsSnap, bookingsSnap] = await Promise.all([
+        get(ref(db, "timeslots")),
+        get(ref(db, "bookings")),
+      ]);
+      const timeslots = timeslotsSnap.val() || {};
+      const bkByDate = collectBookingsByDate(bookingsSnap.val());
+      const updates = {};
+      let removed = 0;
+      Object.entries(timeslots).forEach(([date, slotMap]) => {
+        const dayBk = bkByDate[date] || [];
+        Object.entries(slotMap || {}).forEach(([slotId, slot]) => {
+          if (!slot || slot.available !== false) return;
+          if (slot.adminBlocked || slot.vipOnly || slot.surcharge) return;
+          const [h, m] = (slot.time || "").split(":").map(Number);
+          if (Number.isNaN(h) || Number.isNaN(m)) return;
+          const sMin = h * 60 + m;
+          const covered = dayBk.some(b => b.startMin <= sMin && sMin < b.startMin + b.durMin);
+          if (!covered) {
+            updates[`timeslots/${date}/${slotId}`] = null;
+            removed++;
+          }
+        });
+      });
+      if (removed > 0) await update(ref(db, "/"), updates);
+      setCleanResult(removed);
+    } catch {
+      setCleanResult("Помилка");
+    } finally {
+      setCleaning(false);
+    }
+  };
+
+  // Аварійне відновлення: перезаписує позначки зайнятості (available:false +
+  // bookingStart) для КОЖНОГО активного бронювання в базі — виправляє шкоду
+  // від попередньої версії кнопки очистки, яка хибно видаляла зайняті слоти
+  // клієнтських самозаписів (не мали startMin/durMin напряму). Нічого не
+  // видаляє — лише дописує/підтверджує зайнятість, безпечно повторювати.
+  const [restoring, setRestoring] = useState(false);
+  const [restoreResult, setRestoreResult] = useState(null);
+  const runRestoreOccupiedMarkers = async () => {
+    if (!window.confirm("Відновити позначки зайнятості для всіх активних записів у базі?")) return;
+    setRestoring(true);
+    setRestoreResult(null);
+    try {
+      const bookingsSnap = await get(ref(db, "bookings"));
+      const bkByDate = collectBookingsByDate(bookingsSnap.val());
+      const updates = {};
+      let marked = 0;
+      Object.entries(bkByDate).forEach(([date, dayBk]) => {
+        dayBk.forEach(b => {
+          for (let cur = b.startMin; cur < b.startMin + b.durMin; cur += 30) {
+            const hh = String(Math.floor(cur / 60)).padStart(2, "0");
+            const mm = String(cur % 60).padStart(2, "0");
+            updates[`timeslots/${date}/slot${hh}${mm}/available`] = false;
+            updates[`timeslots/${date}/slot${hh}${mm}/time`] = `${hh}:${mm}`;
+            updates[`timeslots/${date}/slot${hh}${mm}/bookingStart`] = cur === b.startMin;
+            marked++;
+          }
+        });
+      });
+      if (marked > 0) await update(ref(db, "/"), updates);
+      setRestoreResult(marked);
+    } catch {
+      setRestoreResult("Помилка");
+    } finally {
+      setRestoring(false);
+    }
+  };
+
   const uk = lang !== "en";
   const SECTIONS = [
     { id:"schedule",   icon:"🕐", color:BLUE,   title:t('set.schedule.title'), label:uk?"Графік":"Sched." },
@@ -572,8 +730,11 @@ select{color-scheme:${isKava?"light":"dark"}}
           <Row label={t('set.schedule.days')}>
             <NumInput value={settings.daysShown} onChange={v=>upd("daysShown",v)} min={1} max={30} suffix={` ${t('days')}`}/>
           </Row>
-          <Row compact last color={svColor(settings.lockPastBookings)} label="Блокувати минулі записи" hint="Заборонити редагувати, переносити й скасовувати записи, що вже минули — вони підсвічуються тьмяніше">
+          <Row compact color={svColor(settings.lockPastBookings)} label="Блокувати минулі записи" hint="Заборонити редагувати, переносити й скасовувати записи, що вже минули — вони підсвічуються тьмяніше">
             <Toggle color={svColor(settings.lockPastBookings)} on={!!settings.lockPastBookings} onChange={v=>upd("lockPastBookings",v)}/>
+          </Row>
+          <Row compact last color={svColor(settings.uiFog === true)} label="Стиль «Туман»" hint="Скляний фон і картки в усьому застосунку (лише темна тема). Вимкніть, щоб повернути попередній вигляд">
+            <Toggle color={svColor(settings.uiFog === true)} on={settings.uiFog === true} onChange={v=>upd("uiFog",v)}/>
           </Row>
           <WeekScheduleEditor weekSchedule={weekSchedule} updDay={updDay} setWeek={v=>upd("weekSchedule",v)}/>
         </div>
@@ -618,6 +779,44 @@ select{color-scheme:${isKava?"light":"dark"}}
               <div style={{fontSize:10,color:DIM,opacity:0.7,marginTop:2}}>Увімкнено — кольори слотів розподіляються автоматично. Вимкнено — колір задається вручну в картці учня</div>
             </div>
             <Toggle color={svColor(settings.autoStudentColors !== false)} on={settings.autoStudentColors !== false} onChange={v=>upd("autoStudentColors",v)}/>
+          </div>
+          <div style={{borderRadius:10,padding:"10px",marginTop:5,background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,boxShadow:SO}}>
+            <div style={{fontSize:12,color:DIM,marginBottom:8}}>
+              Видаляє "зайняті" слоти в базі, які не належать жодному активному
+              запису (залишки після тестів/помилок) — по всіх датах одразу.
+            </div>
+            <button onClick={runCleanupOrphanedSlots} disabled={cleaning} style={{
+              width:"100%", padding:"10px", borderRadius:9, border:"none",
+              cursor: cleaning ? "default" : "pointer",
+              background: cleaning ? `linear-gradient(145deg,${SURF_HI},${SURFACE})` : `linear-gradient(145deg,${RED},${RED}cc)`,
+              color:"#fff", fontSize:13, fontWeight:800,
+            }}>
+              {cleaning ? "Очищення..." : "🧹 Очистити сирітські слоти"}
+            </button>
+            {cleanResult !== null && (
+              <div style={{fontSize:11, color:DIM, marginTop:6, textAlign:"center"}}>
+                {cleanResult === "Помилка" ? "Помилка при очищенні" : `Видалено: ${cleanResult}`}
+              </div>
+            )}
+          </div>
+          <div style={{borderRadius:10,padding:"10px",marginTop:5,background:`linear-gradient(145deg,${SURF_HI},${SURFACE})`,boxShadow:SO}}>
+            <div style={{fontSize:12,color:DIM,marginBottom:8}}>
+              Відновлює позначки зайнятості для всіх активних записів у базі —
+              нічого не видаляє, лише дописує/підтверджує зайнятість.
+            </div>
+            <button onClick={runRestoreOccupiedMarkers} disabled={restoring} style={{
+              width:"100%", padding:"10px", borderRadius:9, border:"none",
+              cursor: restoring ? "default" : "pointer",
+              background: restoring ? `linear-gradient(145deg,${SURF_HI},${SURFACE})` : `linear-gradient(145deg,${GREEN},${GREEN}cc)`,
+              color:"#fff", fontSize:13, fontWeight:800,
+            }}>
+              {restoring ? "Відновлення..." : "🔄 Відновити позначки зайнятості"}
+            </button>
+            {restoreResult !== null && (
+              <div style={{fontSize:11, color:DIM, marginTop:6, textAlign:"center"}}>
+                {restoreResult === "Помилка" ? "Помилка при відновленні" : `Позначено: ${restoreResult}`}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -957,6 +1156,30 @@ select{color-scheme:${isKava?"light":"dark"}}
           padding:"10px 24px", borderRadius:14, fontSize:13, fontWeight:700,
         }}>📲 Встановити додаток</button>
       )}
+      {license && (() => {
+        // eslint-disable-next-line react-hooks/purity -- лише для відображення "днів залишилось", не впливає на логіку
+        const now = Date.now();
+        const untilTs = license.status === "trial" ? license.trialEndsAt : license.expiresAt;
+        const daysLeft = untilTs ? Math.ceil((untilTs - now) / 86400000) : null;
+        const blocked = license.status === "suspended" || (daysLeft != null && daysLeft < 0);
+        const statusColor = blocked ? RED : (daysLeft != null && daysLeft <= 3 ? GOLD : GREEN);
+        const statusLabel = blocked ? "Призупинено" : license.status === "trial" ? "Пробний період" : "Активна";
+        return (
+          <div style={{
+            margin:"12px 14px 0", padding:"12px 14px", borderRadius:14,
+            background:SURF_HI, border:`1px solid ${BORDER}`, boxShadow:SI,
+          }}>
+            <div style={{fontSize:11, fontWeight:800, color:DIM, textTransform:"uppercase", letterSpacing:0.5, marginBottom:4}}>Підписка</div>
+            <div style={{fontSize:14, fontWeight:700, color:statusColor}}>{statusLabel}</div>
+            {daysLeft != null && !blocked && (
+              <div style={{fontSize:12, color:DIM, marginTop:2}}>Залишилось днів: {daysLeft}</div>
+            )}
+            {blocked && (
+              <div style={{fontSize:12, color:DIM, marginTop:2}}>Зверніться до OlhaDrive для продовження доступу.</div>
+            )}
+          </div>
+        );
+      })()}
       <div onClick={forceUpdate} style={{textAlign:"center",padding:"8px 0 2px",color:FAINT,fontSize:13,fontWeight:600,letterSpacing:0.5,cursor:"pointer"}}>
         {APP_VERSION}
       </div>

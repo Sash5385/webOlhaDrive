@@ -60,10 +60,21 @@ const TAG_PRESETS = [
 // Автотег за порядковим номером запису учня (серед усіх нескасованих, включно з майбутніми)
 const AUTO_TAG_BY_ORDER = { 1: "first", 20: "check", 40: "exam" };
 
+// Медалі за урок — присвоюються прямо в модалці бронювання (прив'язані до booking.id)
+const BADGE_PRESETS = [
+  { icon:"🏅", label:"Молодець" },
+  { icon:"🥇", label:"Найкращий учень" },
+  { icon:"⭐", label:"Відмінна їзда" },
+  { icon:"🎯", label:"Точне паркування" },
+  { icon:"🚦", label:"Знавець ПДР" },
+  { icon:"🏆", label:"Готовий до іспиту" },
+];
+
+
 // ═══════════════════════════════════════════════════════════════
 // GLOBAL CSS (slots from v4, rest v3)
 // ═══════════════════════════════════════════════════════════════
-const GLOBAL_CSS = `
+const makeGlobalCSS = (FOG) => `
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 body, html, #root { margin:0; padding:0; }
 
@@ -100,7 +111,15 @@ body, html, #root { margin:0; padding:0; }
     4px 4px 9px rgba(0,0,0,0.5),
     -3px -3px 8px rgba(255,255,255,0.28);
 }
-.slot-pending-ring {
+${FOG ? `/* «Туман»: скляні кольорові картки замість об'ємних «подушок» */
+.slot-colored {
+  background: color-mix(in srgb, var(--c) 36%, transparent);
+  border: 1px solid color-mix(in srgb, var(--c) 60%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22), inset 1px 1px 0 rgba(255,255,255,0.12);
+}
+.slot-colored::before, .slot-colored::after { display: none; }
+` : ""}.slot-pending-ring {
   animation: pulse-ring 2s infinite;
 }
 @keyframes pulse-ring {
@@ -683,9 +702,9 @@ function BroadcastModal({ initialDate, initialSlot, onClose }) {
 // MONTH CALENDAR SHEET — bottom-sheet monthly overview, tap a day to jump
 // ═══════════════════════════════════════════════════════════════
 function MonthCalendarSheet({ bookings, onClose, onPickDate }) {
-  const { BG, BG_DEEP, SURFACE, SURF_HI, TEXT, DIM, FAINT, GOLD, GREEN, BLUE, RED } = useContext(ThemeContext);
+  const { BG, BG_DEEP, SURFACE, SURF_HI, TEXT, DIM, FAINT, GOLD, GREEN, BLUE, RED, FOG } = useContext(ThemeContext);
   const { glow, shade, ink } = useFX();
-  const isLight = BG_DEEP !== "#161719";
+  const isLight = !FOG && BG_DEEP !== "#161719";
   const [closing, setClosing] = useState(false);
   const today0 = useRef((() => { const d = new Date(); d.setHours(12,0,0,0); return d; })()).current;
   const [viewY, setViewY] = useState(today0.getFullYear());
@@ -1160,8 +1179,8 @@ function VirtualCols({ vRangeRef, subRef, colW, nDays, renderCol }) {
 // SCHEDULE VIEW with drag/resize + pinch-to-zoom + day-count
 // ═══════════════════════════════════════════════════════════════
 function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bookings, setBookings, activeDragIds, navTo, slotExistsRef, openSlotsRef, jumpTarget, setJumpTarget, onViewStudent }) {
-  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, BLUE, GREEN, GOLD, RED, SO, STRIPE_A, STRIPE_B } = useContext(ThemeContext);
-  const isLight = BG !== "#1c1d21";
+  const { BG, BG_DEEP, SURFACE, SURF_HI, SURF_LO, BORDER, TEXT, DIM, FAINT, ACCENT, BLUE, GREEN, GOLD, RED, SO, STRIPE_A, STRIPE_B, FOG } = useContext(ThemeContext);
+  const isLight = !FOG && BG !== "#1c1d21";
   const { glow, shade, ink } = useFX();
   const GRID_H  = isLight ? "rgba(0,0,0,0.09)"   : "rgba(255,255,255,0.07)";
   const GRID_HH = isLight ? "rgba(0,0,0,0.04)"   : "rgba(255,255,255,0.025)";
@@ -2764,7 +2783,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
     if (action === "chat")     { navTo?.("chats"); return; }
     if (action === "call")     window.location.href=`tel:${b.phone}`;
     if (action === "sms")      window.location.href=`sms:${b.phone}`;
-    if (action === "viber")    window.location.href=`viber://chat?number=%2B${b.phone.replace(/\D/g,"")}`;
+    if (action === "viber")    window.open(`viber://chat?number=%2B${b.phone.replace(/\D/g,"")}`,"_blank");
     if (action === "telegram") window.location.href=`https://t.me/${b.phone.replace(/\D/g,"")}`;
     if (action === "setTag") {
       // Ручний вибір/зняття мітки — позначаємо tagManual, щоб автоматична
@@ -2915,7 +2934,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
 
   return (
     <>
-    <style>{GLOBAL_CSS}</style>
+    <style>{makeGlobalCSS(FOG)}</style>
     <Card style={{
       padding:"6px 3px 0", overflow:"hidden", flex:1, minHeight:0, display:"flex", flexDirection:"column",
       // Той самий скляний фон, що й у нижньому навбарі — замість суцільного SURFACE.
@@ -3839,7 +3858,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                       {!isBlock && !isVipSlot && !isPersonal && height >= 12 && (() => {
                         const [fName, ...lParts] = b.name.split(' ');
                         const lName = lParts.join(' ');
-                        const si = a => isLight ? ink(a) : `rgba(0,0,0,${a})`;
+                        const si = a => FOG ? `rgba(255,255,255,${a})` : isLight ? ink(a) : `rgba(0,0,0,${a})`;
                         const priceColor = b.surcharge ? GOLD : si(0.9);
                         const typeLabel = b.type==="school" ? "Автошкола" : "Приватний";
                         const priceText = price > 0 ? `${price}₴` : "";
@@ -3901,9 +3920,9 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                         <div style={{
                           position:"absolute", top:timeTop, right:3, zIndex:4,
                           fontSize:_timeFs,
-                          fontWeight:800, lineHeight:1, color:"rgba(0,0,0,0.8)",
+                          fontWeight:800, lineHeight:1, color:FOG?"rgba(255,255,255,0.85)":"rgba(0,0,0,0.8)",
                           pointerEvents:"none",
-                          textShadow:"0 0 3px rgba(255,255,255,0.9), 0 0 1px rgba(255,255,255,0.9)",
+                          textShadow:FOG?"none":"0 0 3px rgba(255,255,255,0.9), 0 0 1px rgba(255,255,255,0.9)",
                         }}>{b.time || fmtTime(b.startMin)}</div>
                       )}
                       {/* VIP crown badge for regular bookings marked as VIP — ліворуч зверху,
@@ -5166,6 +5185,9 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
   const [editRate, setEditRate] = useState(0);
   const [maneuverState, setManeuverState] = useState({});
   const [maneuverCounts, setManeuverCounts] = useState({});
+  const [maneuverResults, setManeuverResults] = useState({});
+  const [allBadges, setAllBadges] = useState({});
+  const [badgePickerOpen, setBadgePickerOpen] = useState(false);
   const [tagPickerOpen, setTagPickerOpen] = useState(false);
   const [debtInput, setDebtInput] = useState("");
   useEffect(() => { setDebtInput(booking?.debtAmount ? String(booking.debtAmount) : ""); }, [booking?.id]);
@@ -5205,17 +5227,46 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
   useEffect(() => {
     if (!booking) return;
     setManeuverState(booking.maneuvers || {});
-    if (!booking.userId) { setManeuverCounts({}); return; }
+    setManeuverResults(booking.maneuverResults || {});
+    setBadgePickerOpen(false);
+    if (!booking.userId) { setManeuverCounts({}); setAllBadges({}); return; }
     const r = ref(db, `users/${booking.userId}/maneuverCounts`);
     const unsub = onValue(r, snap => setManeuverCounts(snap.val() || {}));
-    return () => unsub();
+    const rb = ref(db, `users/${booking.userId}/badges`);
+    const unsubB = onValue(rb, snap => setAllBadges(snap.val() || {}));
+    return () => { unsub(); unsubB(); };
   }, [booking]);
 
   const toggleManeuver = (key) => {
     if (!booking || maneuverState[key]) return;
     setManeuverState(s => ({ ...s, [key]: true }));
+    setManeuverResults(s => ({ ...s, [key]: "success" }));
     update(ref(db, `bookings/${booking.userId}/${booking.id}/maneuvers`), { [key]: true }).catch(()=>{});
+    update(ref(db, `bookings/${booking.userId}/${booking.id}/maneuverResults`), { [key]: "success" }).catch(()=>{});
     update(ref(db, `users/${booking.userId}/maneuverCounts`), { [key]: increment(1) }).catch(()=>{});
+    update(ref(db, `users/${booking.userId}/maneuverSuccessCounts`), { [key]: increment(1) }).catch(()=>{});
+  };
+  // Перемикач "вдало/невдало" — доступний лише для вже відпрацьованого в
+  // цьому уроці маневру. За замовчуванням маневр рахується вдалим (щоб не
+  // додавати зайвий тап на типовий кейс); адмін може позначити невдалу спробу.
+  const toggleManeuverResult = (key) => {
+    if (!booking || !maneuverState[key]) return;
+    const next = (maneuverResults[key] || "success") === "success" ? "fail" : "success";
+    setManeuverResults(s => ({ ...s, [key]: next }));
+    update(ref(db, `bookings/${booking.userId}/${booking.id}/maneuverResults`), { [key]: next }).catch(()=>{});
+    update(ref(db, `users/${booking.userId}/maneuverSuccessCounts`), { [key]: increment(next === "success" ? 1 : -1) }).catch(()=>{});
+  };
+
+  // Медаль за конкретний урок — прив'язана до booking.id, тому клієнт може
+  // показати її саме біля цього завершеного запису, а не загальним списком.
+  const awardBookingBadge = (icon, label) => {
+    if (!booking) return;
+    fbPush(ref(db, `users/${booking.userId}/badges`), { icon, label, awardedAt: new Date().getTime(), bookingId: booking.id }).catch(()=>{});
+    setBadgePickerOpen(false);
+  };
+  const removeBookingBadge = (badgeId) => {
+    if (!booking) return;
+    remove(ref(db, `users/${booking.userId}/badges/${badgeId}`)).catch(()=>{});
   };
 
   // booking може стати null синхронно (напр. cancel обнуляє вибір), поки closing=true.
@@ -5584,31 +5635,92 @@ function BookingModal({ booking, onClose, onAction, settings, bookings, onViewSt
               ].map(m => {
                 const active = !!maneuverState[m.key];
                 const count = maneuverCounts[m.key] || 0;
+                const isSuccess = (maneuverResults[m.key] || "success") === "success";
                 return (
-                  <button key={m.key} onClick={() => toggleManeuver(m.key)} disabled={active} style={{
-                    position:"relative", fontFamily:"inherit",
-                    background: active ? `linear-gradient(155deg,${PURPLE},color-mix(in srgb,${PURPLE} 55%,#000))` : "rgba(0,0,0,0.22)",
-                    border:`1.5px solid ${active ? PURPLE : "rgba(255,255,255,0.15)"}`,
-                    borderRadius:12, padding:"10px 4px",
-                    textAlign:"center", fontSize:10.5, fontWeight:700,
-                    color: "#fff",
-                    cursor: active ? "default" : "pointer",
-                    boxShadow: active ? `0 3px 12px ${PURPLE}66` : "none",
-                  }}>
-                    {m.label}
+                  <div key={m.key} style={{position:"relative"}}>
+                    <button onClick={() => toggleManeuver(m.key)} style={{
+                      width:"100%", fontFamily:"inherit",
+                      background: active ? `linear-gradient(155deg,${PURPLE},color-mix(in srgb,${PURPLE} 55%,#000))` : "rgba(0,0,0,0.22)",
+                      border:`1.5px solid ${active ? PURPLE : "rgba(255,255,255,0.15)"}`,
+                      borderRadius:12, padding:"10px 4px",
+                      textAlign:"center", fontSize:10.5, fontWeight:700,
+                      color: "#fff",
+                      cursor: active ? "default" : "pointer",
+                      boxShadow: active ? `0 3px 12px ${PURPLE}66` : "none",
+                    }}>
+                      {m.label}
+                    </button>
                     <div style={{
                       position:"absolute", top:-7, right:-6,
                       background:GOLD, color:"#1a1200", fontSize:9, fontWeight:900,
                       width:18, height:18, borderRadius:"50%",
                       display:"flex", alignItems:"center", justifyContent:"center",
-                      border:`2px solid ${BG_DEEP}`,
+                      border:`2px solid ${BG_DEEP}`, pointerEvents:"none",
                     }}>{count}</div>
-                  </button>
+                    {active && (
+                      <div onClick={() => toggleManeuverResult(m.key)} style={{
+                        position:"absolute", bottom:-7, right:-6,
+                        background: isSuccess ? GREEN : RED, color:"#fff", fontSize:10, fontWeight:900,
+                        width:18, height:18, borderRadius:"50%",
+                        display:"flex", alignItems:"center", justifyContent:"center",
+                        border:`2px solid ${BG_DEEP}`, cursor:"pointer",
+                      }} title={isSuccess ? "Вдало (тап — позначити невдало)" : "Невдало (тап — позначити вдало)"}>
+                        {isSuccess ? "✓" : "✕"}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
             <div style={{marginTop:8,fontSize:10.5,lineHeight:1.4,color:"rgba(255,255,255,.55)"}}>
               Тап по маневру — відмітити, що його відпрацювали на цьому уроці. Золотий кружок — скільки разів учень відпрацював його за весь час. ✓ / ✕ — вдало чи невдало (тап — змінити).
+            </div>
+          </div>
+
+          {/* Медаль за урок — золота колірна картка (прив'язана до цього booking, видно учню біля завершеного запису) */}
+          <div style={{
+            margin:"10px 14px 0",padding:"12px 14px",borderRadius:16,
+            background:`linear-gradient(155deg,color-mix(in srgb,${GOLD} 38%,${BG_DEEP}) 0%,${BG_DEEP} 100%)`,
+            border:`1px solid color-mix(in srgb,${GOLD} 36%,transparent)`,
+          }}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"rgba(255,255,255,.8)",textTransform:"uppercase"}}>
+                🏅 Заохочення за урок
+              </div>
+              <div onClick={() => setBadgePickerOpen(o => !o)} style={{
+                fontSize:11,fontWeight:800,color:"#fff",cursor:"pointer",padding:"2px 8px",
+                borderRadius:8,background:"rgba(0,0,0,0.25)",
+              }}>{badgePickerOpen ? "Закрити" : "+ Додати"}</div>
+            </div>
+            {Object.entries(allBadges).filter(([,b])=>b.bookingId===booking.id).length > 0 && (
+              <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:badgePickerOpen?8:0}}>
+                {Object.entries(allBadges).filter(([,b])=>b.bookingId===booking.id).map(([bid,b])=>(
+                  <div key={bid} onClick={()=>removeBookingBadge(bid)} title="Тап — прибрати" style={{
+                    display:"flex",alignItems:"center",gap:5,padding:"5px 9px",borderRadius:20,
+                    background:"rgba(0,0,0,0.22)",border:"1px solid rgba(255,255,255,0.25)",cursor:"pointer",
+                  }}>
+                    <span style={{fontSize:14}}>{b.icon}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:"#fff"}}>{b.label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {badgePickerOpen && (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:7,paddingBottom:4}}>
+                {BADGE_PRESETS.map((bp,i)=>(
+                  <button key={i} onClick={()=>awardBookingBadge(bp.icon,bp.label)} style={{
+                    display:"flex",flexDirection:"column",alignItems:"center",gap:4,
+                    padding:"9px 4px",borderRadius:12,border:"1px solid rgba(255,255,255,0.18)",cursor:"pointer",
+                    background:"rgba(0,0,0,0.22)",fontFamily:"inherit",
+                  }}>
+                    <span style={{fontSize:18}}>{bp.icon}</span>
+                    <span style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,.85)",textAlign:"center",lineHeight:1.2}}>{bp.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{marginTop:8,fontSize:10.5,lineHeight:1.4,color:"rgba(255,255,255,.55)"}}>
+              Нагорода учню за цей урок. Учень побачить її у профілі в розділі «Мої заохочення». Тап по значку — прибрати.
             </div>
           </div>
 
@@ -6176,6 +6288,7 @@ function NumInput({ value, onChange, min, max, suffix }) {
 // SETTINGS — все настройки
 // ═══════════════════════════════════════════════════════════════
 function SettingsView({ settings, setSettings }) {
+  const { FOG } = useContext(ThemeContext);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const upd = (k, v) => setSettings(s => ({...s, [k]:v}));
   const updNested = (k1, k2, v) => setSettings(s => ({...s, [k1]:{...s[k1], [k2]:v}}));
@@ -6194,7 +6307,7 @@ function SettingsView({ settings, setSettings }) {
 
   return (
     <>
-    <style>{GLOBAL_CSS}</style>
+    <style>{makeGlobalCSS(FOG)}</style>
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
       {/* ── PROFILE ── */}
@@ -6944,6 +7057,7 @@ const TITLES = {
 };
 
 export default function App() {
+  const { FOG } = useContext(ThemeContext);
   const [tab, setTab] = useState("schedule");
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [bookings, setBookings] = useState(initialBookings);
@@ -7151,7 +7265,7 @@ export default function App() {
 
   return (
     <>
-      <style>{GLOBAL_CSS}</style>
+      <style>{makeGlobalCSS(FOG)}</style>
       <div style={{
         minHeight:"100vh", background:BG, color:TEXT,
         fontFamily:"ui-sans-serif,-apple-system,BlinkMacSystemFont,system-ui,sans-serif",

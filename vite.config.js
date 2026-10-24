@@ -123,7 +123,19 @@ export default defineConfig({
         // автоматично, коли вкладку згортають), а versionGuard() рятує сесії,
         // де навіть це не спрацювало.
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Serve navigations network-first so an online client always gets the
+        // freshest index.html (and thus the freshest bundle) through the SW,
+        // instead of an indefinitely stale precached shell.
+        navigateFallback: '/index.html',
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'html-navigations',
+              networkTimeoutSeconds: 5
+            }
+          },
           {
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com/,
             handler: 'CacheFirst',

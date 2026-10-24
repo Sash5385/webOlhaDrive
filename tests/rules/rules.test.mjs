@@ -162,6 +162,11 @@ await t("admin writes booking confirmed + price", A, () => update(R(ADM, "bookin
 await t("admin creates booking createdBy admin", A, () => set(R(ADM, "bookings/guest_380/x"), { status: "confirmed", createdBy: "admin" }));
 await t("admin sets users isVip", A, () => update(R(ADM, "users/stu1"), { isVip: true, discount: 5 }));
 await t("admin reads users root", A, () => get(R(ADM, "users")));
+await t("student reads license (client lock screen)", A, () => get(R(S1, "license")));
+await t("student writes license", X, () => set(R(S1, "license/status"), "active"));
+await t("admin writes license", A, () => set(R(ADM, "license/status"), "active"));
+await t("student awards self badge", X, () => set(R(S1, "users/stu1/badges/b1"), { icon: "x", label: "x" }));
+await t("admin awards badge + maneuver counts", A, () => update(R(ADM, "users/stu1"), { "badges/b1": { icon: "x", label: "x", awardedAt: NOW }, "maneuverSuccessCounts/rozvorot": 1 }));
 console.log(fails ? `\n${fails} FAILED` : "\nALL OK");
 await env.cleanup();
 process.exit(fails ? 1 : 0);
