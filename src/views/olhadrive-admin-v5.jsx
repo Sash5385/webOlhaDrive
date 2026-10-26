@@ -2909,6 +2909,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const [longTapMenu, setLongTapMenu] = useState(null); // { dateStr, startMin, clientX, clientY }
   const [ltmClosing, setLtmClosing] = useState(false);
   const ltmOpenedAtRef = useRef(0); // iOS: клік після відпускання пальця не має закривати меню
+  useEffect(() => { if (slotOptions) ltmOpenedAtRef.current = Date.now(); }, [!!slotOptions]);
   const [ltmScatter, setLtmScatter] = useState(false);
   const [personalEventView, setPersonalEventView] = useState(null); // booking for viewing
   // Поля форми редагування особистої події (заповнюються при відкритті personalEventView)
@@ -4472,7 +4473,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           @keyframes _so-bg-in{from{opacity:0}to{opacity:1}}
           @keyframes _so-bg-out{from{opacity:1}to{opacity:0}}
         `}</style>
-        <div onClick={slotClosing ? undefined : _closeSO} style={{
+        <div onClick={slotClosing ? undefined : ()=>{ if (Date.now() - ltmOpenedAtRef.current < 700) return; _closeSO(); }} style={{
           position:"fixed",inset:0,zIndex:200,
           background:shade(0.55),
           display:"flex",alignItems:"flex-end",justifyContent:"center",
