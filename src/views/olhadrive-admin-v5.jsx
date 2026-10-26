@@ -2908,6 +2908,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
   const [personalEventData, setPersonalEventData] = useState(null); // { dateStr, time }
   const [longTapMenu, setLongTapMenu] = useState(null); // { dateStr, startMin, clientX, clientY }
   const [ltmClosing, setLtmClosing] = useState(false);
+  const ltmOpenedAtRef = useRef(0); // iOS: клік після відпускання пальця не має закривати меню
   const [ltmScatter, setLtmScatter] = useState(false);
   const [personalEventView, setPersonalEventView] = useState(null); // booking for viewing
   // Поля форми редагування особистої події (заповнюються при відкритті personalEventView)
@@ -3266,7 +3267,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
                   emptyHoldTimerRef.current = setTimeout(() => {
                     if (!emptyHoldPosRef.current) return;
                     setLtmClosing(false); setLtmScatter(false);
-                    setLongTapMenu({ dateStr: dateStrCol, startMin: minute, selectedMin: minute, clientX: e.clientX, clientY: e.clientY, isClosedDay });
+                    ltmOpenedAtRef.current = Date.now(); setLongTapMenu({ dateStr: dateStrCol, startMin: minute, selectedMin: minute, clientX: e.clientX, clientY: e.clientY, isClosedDay });
                     emptyHoldPosRef.current = null;
                   }, 480);
                 }}
@@ -4321,7 +4322,7 @@ function ScheduleView({ settings, setSettings, onSlotClick, onEmptySlotClick, bo
           @keyframes _ltm-sc-r{from{transform:translate(0,0) rotate(0);opacity:1}to{transform:translate(180px,70px) rotate(22deg);opacity:0}}
           @keyframes _ltm-sc-chips{from{transform:translateY(0);opacity:1}to{transform:translateY(-50px);opacity:0}}
         `}</style>
-        <div onClick={_anyClose ? undefined : _closeLtm} style={{
+        <div onClick={_anyClose ? undefined : ()=>{ if (Date.now() - ltmOpenedAtRef.current < 700) return; _closeLtm(); }} style={{
           position:"fixed",inset:0,zIndex:200,
           background:`${shade(0.55)}`,
           display:"flex",alignItems:"flex-end",
