@@ -689,8 +689,8 @@ select{color-scheme:${isKava?"light":"dark"}}
           <Row compact color={svColor(settings.lockPastBookings)} label="Блокувати минулі записи" hint="Заборонити редагувати, переносити й скасовувати записи, що вже минули — вони підсвічуються тьмяніше">
             <Toggle color={svColor(settings.lockPastBookings)} on={!!settings.lockPastBookings} onChange={v=>upd("lockPastBookings",v)}/>
           </Row>
-          <Row compact last color={svColor(settings.uiFog === true)} label="Стиль «Туман»" hint="Скляний фон і картки в усьому застосунку (лише темна тема). Вимкніть, щоб повернути попередній вигляд">
-            <Toggle color={svColor(settings.uiFog === true)} on={settings.uiFog === true} onChange={v=>upd("uiFog",v)}/>
+          <Row compact last color={svColor(settings.uiFog !== false)} label="Стиль «Туман»" hint="Скляний фон і картки в усьому застосунку (лише темна тема). Вимкніть, щоб повернути попередній вигляд">
+            <Toggle color={svColor(settings.uiFog !== false)} on={settings.uiFog !== false} onChange={v=>upd("uiFog",v)}/>
           </Row>
           <div style={{marginTop:4}}>
             <RowBlock color={BLUE} label="Розмір інтерфейсу" hint="Усі розділи, крім розкладу">
