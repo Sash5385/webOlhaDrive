@@ -204,6 +204,23 @@ await t("student writes license", X, () => set(R(S1, "license/status"), "active"
 await t("admin writes license", A, () => set(R(ADM, "license/status"), "active"));
 await t("student awards self badge", X, () => set(R(S1, "users/stu1/badges/b1"), { icon: "x", label: "x" }));
 await t("admin awards badge + maneuver counts", A, () => update(R(ADM, "users/stu1"), { "badges/b1": { icon: "x", label: "x", awardedAt: NOW }, "maneuverSuccessCounts/rozvorot": 1 }));
+
+// ---- 3D-тренажер: users/{uid}/trainerRuns (пише клієнт після спроби; читає адмін у картці учня)
+const RUN = { route: 1, mode: "exam", passed: false, reason: "Проїзд на червоний", time: 123, minor: 1, at: NOW, faults: [{ code: "redLight", severity: "serious", message: "Проїзд на червоний сигнал світлофора", t: 120 }] };
+await t("student pushes own trainer run", A, () => set(R(S1, "users/stu1/trainerRuns/r1"), RUN));
+await t("student writes trainer run for other student", X, () => set(R(S2, "users/stu1/trainerRuns/r2"), RUN));
+await t("student overwrites existing trainer run", X, () => set(R(S1, "users/stu1/trainerRuns/r1"), { ...RUN, passed: true }));
+await t("student deletes own trainer run", X, () => remove(R(S1, "users/stu1/trainerRuns/r1")));
+await t("trainer run with invalid route", X, () => set(R(S1, "users/stu1/trainerRuns/r3"), { ...RUN, route: 5 }));
+await t("trainer run with unknown field", X, () => set(R(S1, "users/stu1/trainerRuns/r4"), { ...RUN, hack: 1 }));
+await t("trainer run with huge reason", X, () => set(R(S1, "users/stu1/trainerRuns/r5"), { ...RUN, reason: "x".repeat(500) }));
+await t("trainer run without required fields", X, () => set(R(S1, "users/stu1/trainerRuns/r6"), { route: 7 }));
+await t("anon writes trainer run", X, () => set(R(ANON, "users/stu1/trainerRuns/r7"), RUN));
+await t("admin reads student trainer runs", A, () => get(R(ADM, "users/stu1/trainerRuns")));
+await t("student reads own trainer runs", A, () => get(R(S1, "users/stu1/trainerRuns")));
+await t("student reads other student trainer runs", X, () => get(R(S2, "users/stu1/trainerRuns")));
+await t("student writes trainerRuns via users/stu1 root update", X, () => update(R(S1, "users/stu1"), { trainerRuns: { r8: RUN } }));
+
 console.log(fails ? `\n${fails} FAILED` : "\nALL OK");
 await env.cleanup();
 process.exit(fails ? 1 : 0);
