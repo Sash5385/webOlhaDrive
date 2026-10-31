@@ -183,10 +183,10 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92'",
         "$msgId": {
-          ".write": "auth != null && !data.exists() && newData.exists()",
+          ".write": "auth != null && newData.exists() && (!data.exists() || (data.child('uid').val() === auth.uid && newData.child('ts').val() === data.child('ts').val() && now - data.child('ts').val() < 86400000))",
           ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || (newData.hasChildren(['uid','text','ts']) && newData.child('uid').val() === auth.uid && newData.child('text').isString() && newData.child('text').val().length >= 1 && newData.child('text').val().length <= 1000 && (!newData.child('name').exists() || (newData.child('name').isString() && newData.child('name').val().length <= 100)) && (!newData.child('from').exists() || newData.child('from').val() === 'student') && newData.child('ts').isNumber() && newData.child('ts').val() <= now + 86400000 && newData.child('ts').val() >= now - 86400000)",
           "$other": {
-            ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || $other === 'uid' || $other === 'name' || $other === 'from' || $other === 'text' || $other === 'time' || $other === 'ts'"
+            ".validate": "auth.uid === 'N02ZGsiO4TOLE5lPfHuLr5iYWi92' || $other === 'uid' || $other === 'name' || $other === 'from' || $other === 'text' || $other === 'time' || $other === 'ts' || $other === 'editedAt'"
           }
         }
       },
